@@ -20,7 +20,7 @@ Google OAuth 인가 코드를 전달받아 사용자를 가입 또는 로그인 
 ```json
 {
   "code": "string",
-  "redirectUri": "string(optional)"
+  "redirectUri": "string"
 }
 ```
 
@@ -37,10 +37,12 @@ Google OAuth 인가 코드를 전달받아 사용자를 가입 또는 로그인 
   "data": {
     "user": {
       "userId": "string(UUID)",
+      "provider": "google",
       "email": "string",
-      "nickname": "string",
-      "profileImage": "string",
-      "hasTasteProfile": "boolean"
+      "displayName": "string",
+      "profileImageUrl": "string|null",
+      "status": "active",
+      "lastLoginAt": "string(ISO-8601)"
     },
     "accessToken": "string",
     "refreshToken": "string"

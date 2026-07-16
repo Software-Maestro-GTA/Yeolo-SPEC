@@ -48,14 +48,7 @@
         "recommendationReason": "string",
         "createdAt": "string(ISO-8601)"
       }
-    ],
-    "pagination": {
-      "page": "number",
-      "size": "number",
-      "totalElements": "number",
-      "totalPages": "number",
-      "hasNext": "boolean"
-    }
+    ]
   }
 }
 ```
