@@ -51,12 +51,6 @@
       "totalCost": "number",
       "tags": ["string"],
       "recommendationReason": "string",
-      "constraints": {
-        "budgetType": "cost_effective | standard | luxury",
-        "maxTravelMinutesPerDay": "number",
-        "preferredTransport": ["walking | transit | driving | taxi"],
-        "pace": "relaxed | balanced | dense"
-      },
       "itinerary": {
         "days": [
           {
