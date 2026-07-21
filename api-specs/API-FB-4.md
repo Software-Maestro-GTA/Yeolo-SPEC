@@ -47,7 +47,7 @@ event: progress
 data: {"step":"GENERATING_COURSE","message":"개인 맞춤형 여행 코스를 생성 중입니다."}
 
 event: complete
-data: {"status":200,"message":"여행 코스 생성 성공","data":{"courseId":"string(UUID)","title":"string","destinationCountry":"string","destinationCity":"string","region":"string","startDate":"string(YYYY-MM-DD)","totalDays":"number","totalCost":"number","tags":["string"],"recommendationReason":"string"}}
+data: {"status":200,"message":"여행 코스 생성 성공","data":{"courseId":"string(UUID)"}}
 ```
 
 ---
