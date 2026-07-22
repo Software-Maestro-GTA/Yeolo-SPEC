@@ -40,10 +40,8 @@
         "title": "string",
         "destinationCountry": "string",
         "destinationCity": "string",
-        "region": "string",
         "startDate": "string(YYYY-MM-DD)",
         "totalDays": "number",
-        "totalCost": "number",
         "tags": ["string"],
         "recommendationReason": "string",
         "createdAt": "string(ISO-8601)"

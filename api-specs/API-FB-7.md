@@ -48,7 +48,6 @@
       "destinationCity": "string",
       "startDate": "string(YYYY-MM-DD)",
       "totalDays": "number",
-      "totalCost": "number",
       "tags": ["string"],
       "recommendationReason": "string",
       "itinerary": {

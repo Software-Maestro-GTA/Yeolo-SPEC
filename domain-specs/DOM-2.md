@@ -10,10 +10,9 @@
 - `userId`: 코스 소유자 (UUID)
 - `title`: 코스 제목 (예: "2박 3일 서귀포 감성 가득 힐링 코스")
 - `destinationCountry`: 여행 국가
-- `destinationCity`: 여행 도시/지역
+- `destinationCity`: 여행 도시
 - `startDate`: 여행 시작일
 - `totalDays`: 총 여행 일수
-- `totalCost`: 추정 총 비용
 - `tags`: 코스 태그
 - `recommendationReason`: 추천 이유
 - `constraints`: 코스 생성 시 반영한 제약 조건
@@ -24,8 +23,8 @@
 ## 2. 저장 목적
 
 - AI가 생성한 여행 코스를 사용자별로 저장한다.
-- 여행 국가·도시·지역, 시작일, 여행 일수 등 코스 표시와 조회에 필요한 기본 정보를 저장한다.
-- 추천 결과의 추정 비용, 추천 이유, 적용 제약 조건을 함께 저장해 사용자가 코스를 이해할 수 있게 한다.
+- 여행 국가·도시, 시작일, 여행 일수 등 코스 표시와 조회에 필요한 기본 정보를 저장한다.
+- 추천 결과의 추천 이유, 적용 제약 조건을 함께 저장해 사용자가 코스를 이해할 수 있게 한다.
 - 일자별 방문지·순서·시간·이동 정보는 `itinerary`에 저장해 코스 상세 화면에서 활용한다.
 
 ---
@@ -84,10 +83,9 @@
 | `user_id`                   | UUID        | 소유자 FK                              |
 | `title`                     | TEXT        | 코스 제목                              |
 | `destination_country`       | TEXT        | 여행 국가                              |
-| `destination_city`          | TEXT        | 여행 도시/지역                         |
+| `destination_city`          | TEXT        | 여행 도시                              |
 | `total_days`                | SMALLINT    | 총 일수 — 필터·정렬용                  |
 | `start_date`                | DATE        | 시작일                                 |
-| `total_cost`                | INTEGER     | 추천 코스 추정 총 비용                 |
 | `tags`                      | TEXT[]      | 태그 — 필터용                          |
 | `recommendation_reason`     | TEXT        | AI 추천 요약 이유                      |
 | `constraints`               | JSONB       | 이동 시간, 예산, 영업시간 등 적용 제약 |
@@ -107,15 +105,8 @@
   "destinationCity": "제주",
   "startDate": "2026-08-01",
   "totalDays": 3,
-  "totalCost": 480000,
   "tags": ["힐링", "카페", "자연"],
   "recommendationReason": "카페·자연·여유로운 일정 선호도가 높아 이동 거리가 짧고 체류 시간이 긴 코스로 구성했습니다.",
-  "constraints": {
-    "maxTravelMinutesPerDay": 120,
-    "budgetType": "cost_effective",
-    "openingHoursChecked": true,
-    "preferredTransport": ["walking", "transit"]
-  },
   "itinerary": {
     "days": [
       {

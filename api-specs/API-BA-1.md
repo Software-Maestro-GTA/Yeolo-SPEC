@@ -81,7 +81,7 @@ event: progress
 data: {"step":"GENERATING_ROUTE","message":"장소와 이동 순서를 구성 중입니다."}
 
 event: complete
-data: {"course":{"title":"string","destinationCountry":"string","destinationCity":"string","region":"string","startDate":"string(YYYY-MM-DD)","totalDays":"number","totalCost":"number","tags":["string"],"recommendationReason":"string","itinerary":{"days":[{"day":"number","date":"string(YYYY-MM-DD)","memo":"string","stops":[{"sequence":"number","placeId":"string","placeName":"string","category":"string","arrivalTime":"string(HH:mm)","stayMinutes":"number","memo":"string","transportToNext":"walking | transit | driving | taxi | none","travelMinutesToNext":"number","cost":"number","reason":"string"}]}]}}}
+data: {"course":{"title":"string","destinationCountry":"string","destinationCity":"string","startDate":"string(YYYY-MM-DD)","totalDays":"number","tags":["string"],"recommendationReason":"string","itinerary":{"days":[{"day":"number","date":"string(YYYY-MM-DD)","memo":"string","stops":[{"sequence":"number","placeId":"string","placeName":"string","category":"string","arrivalTime":"string(HH:mm)","stayMinutes":"number","memo":"string","transportToNext":"walking | transit | driving | taxi | none","travelMinutesToNext":"number","cost":"number","reason":"string"}]}]}}}
 ```
 
 ---
