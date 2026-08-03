@@ -6,23 +6,35 @@
 
 ## 1. Frontend - Backend (FE-BE) API
 
-| API ID                      | API 명                                | HTTP Method | Endpoint                      |
-| :-------------------------- | :------------------------------------ | :---------- | :---------------------------- |
-| [API-FB-1](./API-FB-1.md)   | Google OAuth 로그인                   | `POST`      | `/api/auth/google`            |
-| [API-FB-2](./API-FB-2.md)   | 이미지 메타데이터 기반 성향 분석 생성 | `POST`      | `/api/taste-profile/behavior` |
-| [API-FB-3](./API-FB-3.md)   | 최소 설문 기반 성향 분석 생성         | `POST`      | `/api/taste-profile/survey`   |
-| [API-FB-4](./API-FB-4.md)   | 개인 맞춤형 여행 코스 생성            | `POST`      | `/api/courses`                |
-| [API-FB-7](./API-FB-7.md)   | 여행 코스 상세 조회                   | `GET`       | `/api/courses/{courseId}`     |
-| [API-FB-8](./API-FB-8.md)   | 내 성향 프로필 조회                   | `GET`       | `/api/me/taste-profile`       |
-| [API-FB-10](./API-FB-10.md) | 이전 생성 코스 목록 조회              | `GET`       | `/api/courses`                |
-| [API-FB-11](./API-FB-11.md) | 로그아웃                              | `POST`      | `/api/auth/logout`            |
-| [API-FB-12](./API-FB-12.md) | 회원탈퇴                              | `DELETE`    | `/api/users/me`               |
+| API ID | API 명 | HTTP Method | Endpoint |
+| :--- | :--- | :--- | :--- |
+| [API-AUTH-1](./API-AUTH-1.md) | Google OAuth 로그인 | `POST` | `/api/auth/google` |
+| [API-AUTH-2](./API-AUTH-2.md) | Apple OAuth 로그인 | `POST` | `/api/auth/apple` |
+| [API-AUTH-3](./API-AUTH-3.md) | 토큰 재발급 | `POST` | `/api/auth/refresh` |
+| [API-AUTH-4](./API-AUTH-4.md) | 로그아웃 | `POST` | `/api/auth/logout` |
+| [API-BOOKING-1](./API-BOOKING-1.md) | 예약 제휴 링크 조회 | `GET` | `/api/courses/{courseId}/booking-links` |
+| [API-COURSE-1](./API-COURSE-1.md) | 여행 코스 생성 | `POST` | `/api/courses` |
+| [API-COURSE-2](./API-COURSE-2.md) | 여행 코스 조회 | `GET` | `/api/courses/{courseId}` |
+| [API-COURSE-3](./API-COURSE-3.md) | 여행 코스 목록 조회 | `GET` | `/api/courses` |
+| [API-COURSE-4](./API-COURSE-4.md) | 여행 코스 삭제 | `DELETE` | `/api/courses/{courseId}` |
+| [API-LOC-1](./API-LOC-1.md) | 국가 자동완성 조회 | `GET` | `/api/locations/countries/autocomplete` |
+| [API-LOC-2](./API-LOC-2.md) | 도시 자동완성 조회 | `GET` | `/api/locations/cities/autocomplete` |
+| [API-PLACE-1](./API-PLACE-1.md) | 여행 장소 조회 | `GET` | `/api/places/{placeId}` |
+| [API-PREF-1](./API-PREF-1.md) | 사용자 MBTI 등록/수정 | `PATCH` | `/api/users/me/preferences` |
+| [API-PREF-2](./API-PREF-2.md) | 사진 데이터 분석 동의 저장 | `POST` | `/api/users/me/consents/photo` |
+| [API-PREF-3](./API-PREF-3.md) | 취향 분석 | `POST` | `/api/users/me/taste-profile/analysis` |
+| [API-PREF-4](./API-PREF-4.md) | 취향 조회 | `GET` | `/api/users/me/taste-profile` |
+| [API-SHARE-1](./API-SHARE-1.md) | 여행 코스 공유 링크 생성 | `POST` | `/api/courses/{courseId}/share-links` |
+| [API-SHARE-2](./API-SHARE-2.md) | 여행 코스 공유 링크 조회 | `GET` | `/api/share-links/{shareToken}` |
+| [API-SHARE-3](./API-SHARE-3.md) | 여행 코스 공유 링크 수락 | `POST` | `/api/share-links/{shareToken}/accept` |
+| [API-USER-1](./API-USER-1.md) | 사용자 프로필 등록/수정 | `PATCH` | `/api/users/me/profile` |
+| [API-USER-2](./API-USER-2.md) | 회원탈퇴 | `DELETE` | `/api/users/me` |
 
 ---
 
 ## 2. Backend - AI (BE-AI) 내부 API
 
-| API ID                    | API 명                                  | HTTP Method | Endpoint                              |
-| :------------------------ | :-------------------------------------- | :---------- | :------------------------------------ |
-| [API-BA-1](./API-BA-1.md) | 성향 프로필 기반 여행 코스 생성         | `POST`      | `/internal/ai/courses`                |
-| [API-BA-6](./API-BA-6.md) | 전처리 이미지 메타데이터 기반 성향 분석 | `POST`      | `/internal/ai/taste-profile/behavior` |
+| API ID | API 명 | HTTP Method | Endpoint |
+| :--- | :--- | :--- | :--- |
+| [API-AI-1](./API-AI-1.md) | 취향 분석 | `POST` | `/internal/ai/taste-profile/analysis` |
+| [API-AI-2](./API-AI-2.md) | 여행 코스 생성 | `POST` | `/internal/ai/courses` |

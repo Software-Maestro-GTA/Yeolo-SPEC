@@ -1,73 +1,205 @@
-# [DOM-3] 사용자 정보 (User)
+# [DOM-3] 코스 정보
 
-Google OAuth 기반 로그인 사용자를 식별하고, 성향 프로필·행동 데이터·추천 코스의 소유자를 연결하기 위한 도메인입니다.
+## 코스 정보
 
----
+개인 여행 취향, MBTI, 여행 조건을 바탕으로 생성된 추천 여행 코스를 저장하는 도메인이다.
 
-## 1. 주요 필드 정의
+코스는 사용자별로 저장되며, 코스 목록 조회·상세 조회·삭제·친구 초대·예약 제휴 링크 연결의 기준 데이터로 사용된다. AI가 생성한 장소명은 BE에서 장소 조회/정규화 과정을 거쳐 내부 `placeId`, 위도, 경도와 연결된다.
 
-- `userId`: 서비스 내부 사용자 고유 식별자 (UUID)
-- `provider`: OAuth 제공자 (예: `google`)
-- `providerUserId`: Google OAuth에서 제공하는 사용자 고유 식별자 (`sub`)
-- `email`: 사용자 이메일
-- `displayName`: 사용자 표시 이름
-- `profileImageUrl`: 사용자 프로필 이미지 URL
-- `status`: 사용자 계정 상태
-- `createdAt`: 최초 가입 시각
-- `lastLoginAt`: 마지막 로그인 시각
-- `deletedAt`: 탈퇴 또는 비활성화 시각
 
----
+## 저장 목적
 
-## 2. 저장 목적
+- 사용자가 생성한 여행 코스를 저장한다.
+- 사용자가 공유받은 코스를 자신의 코스 목록에서 다시 확인할 수 있게 한다.
+- 여행 국가, 도시, 시작일, 여행 일수, 예산 수준 등 코스 생성 조건을 보관한다.
+- 일자별 방문 장소, 방문 순서, 도착 시간, 체류 시간, 이동 정보, 예상 비용, 추천 이유를 저장한다.
+- 코스 상세 화면에서 타임라인 형태로 여행 일정을 표시할 수 있게 한다.
+- 코스에 포함된 장소를 내부 `placeId`로 연결해 장소 상세 조회가 가능하게 한다.
+- 코스 기준으로 친구 초대 링크와 예약 제휴 링크를 생성할 수 있게 한다.
 
-- Google OAuth 로그인 후 내부 사용자 계정을 생성하거나 조회한다.
-- 성향 정보, 행동 데이터, 코스 정보의 `user_id`와 연결한다.
-- 로그인 세션 발급, 사용자 식별, 개인화 추천 요청의 기준 데이터로 사용한다.
+## 주요 필드
 
----
+| 필드 | 타입 | 설명 |
+| :--- | :--- | :--- |
+| `courseId` | UUID | 코스 고유 식별자 |
+| `userId` | UUID | 코스 생성자 또는 소유자 |
+| `title` | string | 코스 제목 |
+| `destinationCountry` | string | 여행 국가명 |
+| `destinationCity` | string | 여행 도시명 |
+| `startDate` | string(YYYY-MM-DD) | 여행 시작일 |
+| `totalDays` | number | 총 여행 일수 |
+| `budgetType` | string | 코스 생성 시 선택한 예산 수준 |
+| `tags` | string[] | 코스 태그 |
+| `recommendationReason` | string | 코스 전체 추천 이유 |
+| `itinerary` | object | 일자별 여행 일정 |
+| `createdAt` | string(ISO-8601) | 코스 생성 시각 |
 
-## 3. Enum 정의
 
-| 필드       | 저장값     | 표시/의미           |
-| :--------- | :--------- | :------------------ |
-| `provider` | `google`   | Google OAuth 로그인 |
-| `status`   | `active`   | 정상 사용자         |
-| `status`   | `inactive` | 비활성 사용자       |
-| `status`   | `deleted`  | 탈퇴 사용자         |
+## 코스 생성 기준
 
----
+여행 코스는 다음 정보를 기반으로 생성된다.
 
-## 4. 데이터베이스 컬럼 스펙
+- 사용자의 MBTI
+- 사진 기반 취향 분석 결과
+- 여행 국가
+- 여행 도시
+- 여행 시작일
+- 여행 일수
+- 예산 수준
+MBTI 또는 취향 분석 결과 중 하나 이상이 있으면 코스 생성에 활용할 수 있다. 둘 다 존재하는 경우 서버는 두 정보를 함께 반영해 개인 맞춤형 코스를 생성한다.
 
-| 컬럼                        | 타입        | 역할                                        |
-| :-------------------------- | :---------- | :------------------------------------------ |
-| `id`                        | UUID        | 사용자 PK                                   |
-| `provider`                  | TEXT        | OAuth 제공자                                |
-| `provider_user_id`          | TEXT        | OAuth 제공자 기준 사용자 ID — Google `sub`  |
-| `email`                     | TEXT        | 사용자 이메일                               |
-| `display_name`              | TEXT        | 사용자 표시 이름                            |
-| `profile_image_url`         | TEXT        | 프로필 이미지 URL                           |
-| `status`                    | TEXT        | 계정 상태 — `active`, `inactive`, `deleted` |
-| `created_at` / `updated_at` | TIMESTAMPTZ | 생성·수정 시각                              |
-| `last_login_at`             | TIMESTAMPTZ | 마지막 로그인 시각                          |
-| `deleted_at`                | TIMESTAMPTZ | 탈퇴 또는 삭제 시각                         |
 
----
+## 예산 타입
 
-## 5. JSON 예시
+`budgetType`은 여행 코스 생성 시 사용자의 예산 성향을 나타낸다.
+
+| 값 | 의미 |
+| :--- | :--- |
+| `cost_effective` | 가성비 중심 |
+| `moderate` | 적당한 예산 |
+| `luxury` | 고급/프리미엄 중심 |
+
+
+## 이동 수단 타입
+
+`transportToNext`는 다음 장소까지의 이동 방법을 나타낸다.
+
+| 값 | 의미 |
+| :--- | :--- |
+| `walking` | 도보 이동 |
+| `transit` | 대중교통 이동 |
+| `driving` | 자동차 이동 |
+| `taxi` | 택시 이동 |
+| `none` | 다음 장소 없음 |
+
+
+## itinerary 구조
+
+`itinerary`는 일자별 여행 일정과 장소 목록을 담는다.
+
+- `days`
+  - `day`: 여행 N일 차
+  - `date`: 해당 일자의 날짜
+  - `memo`: 일자별 메모
+  - `stops`
+    - `sequence`: 해당 일자의 방문 순서
+    - `placeId`: 서버 내부 장소 ID
+    - `placeName`: 장소명
+    - `category`: 장소 분류
+    - `latitude`: 위도
+    - `longitude`: 경도
+    - `arrivalTime`: 도착 시간
+    - `stayMinutes`: 체류 시간
+    - `memo`: 장소별 메모
+    - `transportToNext`: 다음 장소까지 이동 방법
+    - `travelMinutesToNext`: 다음 장소까지 예상 이동 시간
+    - `cost`: 예상 비용
+    - `reason`: 해당 장소를 추천한 이유
+
+## 장소 정보 처리 기준
+
+AI 서버는 여행 코스 생성 시 장소명과 카테고리를 중심으로 추천 결과를 반환한다.
+
+BE 서버는 AI가 반환한 장소명을 바탕으로 장소 조회 또는 geocode를 수행하고, 앱에서 사용할 수 있는 내부 장소 정보로 정규화한다.
+
+정규화 후 코스 상세 조회 응답에는 다음 정보가 포함된다.
+
+- 내부 `placeId`
+- 장소명
+- 카테고리
+- 위도
+- 경도
+Google Place ID는 앱에 노출하지 않는다. 앱은 Google API Key나 Google Place ID를 직접 관리하지 않고, 서버가 제공하는 내부 `placeId`와 좌표 정보를 사용한다.
+
+
+## 코스 목록 표시 기준
+
+여행 코스 목록에서는 상세 타임라인 전체를 내려주지 않고, 목록 카드에 필요한 요약 정보만 사용한다.
+
+목록에서 사용하는 주요 정보:
+
+- `courseId`
+- `title`
+- `destinationCountry`
+- `destinationCity`
+- `startDate`
+- `totalDays`
+- `tags`
+- `recommendationReason`
+- `createdAt`
+공유받은 코스를 수락한 경우에도 여행 코스 목록에서 다시 확인할 수 있다. 현재 단계에서는 내가 만든 코스와 공유받은 코스를 반드시 구분하지 않는다.
+
+
+## 코스 삭제 기준
+
+사용자는 저장된 여행 코스를 삭제할 수 있다.
+
+- 코스 생성자가 삭제하는 경우 원본 코스를 삭제한다.
+- 공유받은 사용자가 삭제하는 경우 원본 코스를 삭제하지 않고, 자신의 목록에서만 제거하는 방식으로 처리한다.
+
+## 친구 초대와의 관계
+
+여행 코스는 친구 초대 링크 생성의 기준 리소스다.
+
+사용자가 코스 확인 화면에서 친구 초대를 선택하면 해당 `courseId`를 기준으로 공유 링크를 생성한다. 초대받은 사용자가 공유 링크를 수락하면 해당 코스가 초대받은 사용자의 여행 코스 목록에 표시된다.
+
+
+## 예약 제휴 링크와의 관계
+
+여행 코스는 예약 제휴 링크 조회의 기준 리소스다.
+
+사용자가 코스 확인 화면에서 숙소 또는 항공권 예약 버튼을 선택하면, 서버는 해당 코스의 목적지와 일정 정보를 기준으로 아고다 파트너스 제휴 링크를 제공한다.
+
+예약과 결제는 Yeolo가 아니라 아고다 웹 페이지에서 진행된다.
+
+
+## 예시
 
 ```json
 {
+  "courseId": "550e8400-e29b-41d4-a716-446655440030",
   "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "provider": "google",
-  "providerUserId": "109876543210123456789",
-  "email": "user@gmail.com",
-  "displayName": "김선규",
-  "profileImageUrl": "https://lh3.googleusercontent.com/...",
-  "status": "active",
-  "createdAt": "2026-07-13T06:00:00Z",
-  "lastLoginAt": "2026-07-13T06:10:00Z",
-  "deletedAt": null
+  "title": "2박 3일 제주 힐링 코스",
+  "destinationCountry": "대한민국",
+  "destinationCity": "제주",
+  "startDate": "2026-08-01",
+  "totalDays": 3,
+  "budgetType": "moderate",
+  "tags": ["힐링", "카페", "자연"],
+  "recommendationReason": "자연과 여유로운 일정 선호도를 반영해 이동 거리가 짧고 체류 시간이 긴 코스로 구성했습니다.",
+  "createdAt": "2026-08-01T09:00:00Z",
+  "itinerary": {
+    "days": [
+      {
+        "day": 1,
+        "date": "2026-08-01",
+        "memo": "도착 후 가볍게 즐기는 일정",
+        "stops": [
+          {
+            "sequence": 1,
+            "placeId": "place_550e8400",
+            "placeName": "함덕 해수욕장",
+            "category": "beach",
+            "latitude": 33.5431,
+            "longitude": 126.6698,
+            "arrivalTime": "10:00",
+            "stayMinutes": 90,
+            "memo": "여유롭게 산책하기 좋은 해변",
+            "transportToNext": "transit",
+            "travelMinutesToNext": 35,
+            "cost": 0,
+            "reason": "자연과 해변 선호도를 반영해 첫 일정으로 추천"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
+
+
+## 최종 정리
+
+코스 정보는 여행 코스 생성 결과의 중심 도메인이다.
+
+이 도메인은 코스 생성, 코스 목록 조회, 코스 상세 조회, 코스 삭제, 친구 초대, 예약 제휴 링크 연결 기능에서 공통으로 사용된다. 앱은 서버가 정규화한 코스와 장소 정보를 사용하며, 외부 지도 API 식별자나 예약 제휴 파라미터를 직접 관리하지 않는다.
