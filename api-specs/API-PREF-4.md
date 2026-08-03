@@ -1,36 +1,28 @@
-# [API-FB-8] 내 성향 프로필 조회
+# [API-PREF-4] 취향 조회
 
-사용자가 이전에 완료하여 저장해 둔 정규화된 여행 성향 프로필(Taste Profile) 상세 정보를 조회합니다.
+## 1. 기본 정보
 
----
-
-## 1. API 개요
-
-- **Endpoint**: `/api/me/taste-profile`
 - **Method**: `GET`
-- **통신 방식**: `REST`
-- **인증 필요**: `true`
-- **Header**:
-  ```json
-  {
-    "Authorization": "Bearer {accessToken}"
-  }
-  ```
-
----
+- **Endpoint**: `/api/users/me/taste-profile`
+- **통신 방식**: REST
+- **인증 필요**: Y
+- **Success Status**: `200`
 
 ## 2. Request 사양
 
-- **Query Params**: 없음
-- **Path Params**: 없음
-- **Request Body**: 없음
+### Header
+{
+  "Authorization": "Bearer {accessToken}"
+}
 
----
+### Request Body
+```json
+{}
+```
 
 ## 3. Response 사양
 
 ### 성공 응답 (Status 200)
-
 ```json
 {
   "status": 200,
@@ -39,7 +31,6 @@
     "tasteProfile": {
       "tasteProfileId": "string(UUID)",
       "userId": "string(UUID)",
-      "sourceType": "survey | behavior | mixed",
       "updatedAt": "string(YYYY-MM-DD)",
       "travelPurpose": {
         "relaxation": "number(1-5)",
@@ -88,28 +79,82 @@
         "dietaryRestriction": "number(1-5)",
         "sightseeingOverFood": "number(1-5)"
       },
-      "seasonalEnvironmentPreference": [
-        "warm_region | cold_region | summer_resort | winter_sports | spring_flower_autumn_foliage | dry_weather | off_season | peak_season"
-      ]
+      "seasonalEnvironmentPreference": ["warm_region | cold_region | summer_resort | winter_sports | spring_flower_autumn_foliage | dry_weather | off_season | peak_season"]
     }
   }
 }
 ```
 
----
+### Error Codes
+401: 인증 필요/토큰 만료
+404: 성향 프로필 없음
+500: 서버 오류
 
-## 4. 에러 코드 및 예외 처리
-
-- **401**: 인증 필요/토큰 만료
-- **404**: 성향 프로필 없음
-- **500**: 서버 오류
-
-### 실패 응답 (Status 404)
-
+### 실패 응답
 ```json
 {
   "status": 404,
   "message": "저장된 성향 프로필이 없습니다.",
   "data": null
+}
+```
+
+## 4. 상세 내용 및 예외 케이스
+
+```json
+{
+  "tasteId": "string",
+  "userId": "string",
+  "updatedAt": "string(YYYY-MM-DD)",
+  "travelPurpose": {
+    "relaxation": "int",
+    "sightseeing": "int",
+    "culturalExperience": "int",
+    "gourmet": "int",
+    "natureExploration": "int",
+    "activity": "int",
+    "shopping": "int",
+    "festivalEvent": "int",
+    "wellness": "int",
+    "selfDevelopment": "int"
+  },
+  "travelPaceDensity": "string",
+  "preferredLocationType": {
+    "bigCity": "int",
+    "smallTownAlley": "int",
+    "natureHinterland": "int",
+    "beachResort": "int",
+    "mountainPlateau": "int",
+    "historicalCity": "int",
+    "themeParkResort": "int",
+    "famousSpotPreferred": "int",
+    "hiddenSpotPreferred": "int"
+  },
+  "activityPreference": {
+    "viewing": "int",
+    "experience": "int",
+    "adventure": "int",
+    "photographyVideo": "int",
+    "gourmetExploration": "int",
+    "nightlife": "int",
+    "shopping": "int",
+    "relaxation": "int",
+    "localInteraction": "int"
+  },
+  "spendingTendency": "string",
+  "companionType": "string",
+  "foodPreference": {
+    "localFoodActive": "int",
+    "famousRestaurantCentered": "int",
+    "streetFood": "int",
+    "cafeDessert": "int",
+    "fineDining": "int",
+    "familiarFoodPreferred": "int",
+    "dietaryRestriction": "int",
+    "sightseeingOverFood": "int"
+  },
+  "seasonalEnvironmentPreference": [
+    "string"
+  ]
 }
 ```
