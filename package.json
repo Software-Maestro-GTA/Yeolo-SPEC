@@ -1,0 +1,11 @@
+{
+  "name": "yeolo-spec",
+  "version": "1.0.0",
+  "description": "Notion Specification Synchronization Tool for Yeolo",
+  "scripts": {
+    "sync": "python3 scripts/sync_notion_specs.py"
+  },
+  "keywords": ["notion", "spec", "yeolo"],
+  "author": "",
+  "license": "ISC"
+}
