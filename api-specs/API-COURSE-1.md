@@ -33,7 +33,7 @@
 ```json
 event: progress
 data: {
-  "step": "LOADING_USER_PREFERENCE",
+  "step": "LOADING_TASTE_PREFERENCE",
   "message": "사용자 정보를 불러오는 중입니다."
 }
 
