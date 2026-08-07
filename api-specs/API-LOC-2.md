@@ -11,9 +11,7 @@
 ## 2. Request 사양
 
 ### Header
-{
-  "Authorization": "Bearer {accessToken}"
-}
+{}
 
 ### Path Params
 {}
@@ -51,7 +49,6 @@
 
 ### Error Codes
 400: 유효하지 않은 검색어
-401: 인증 실패
 500: 서버 오류
 
 ### 실패 응답
