@@ -19,7 +19,6 @@
 ### Request Body
 ```json
 {
-  "email": "string|null",
   "displayName": "string|null",
   "profileImage": "file|null"
 }

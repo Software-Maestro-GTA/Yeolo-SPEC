@@ -42,6 +42,7 @@
       "lastLoginAt": "string(ISO-8601)"
     },
     "doOnboarding": "boolean",
+    "recentCourseId": "string(UUID)|null",
     "accessToken": "string",
     "refreshToken": "string"
   }

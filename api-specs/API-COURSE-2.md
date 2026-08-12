@@ -39,6 +39,7 @@
       "title": "string",
       "destinationCountry": "string",
       "destinationCity": "string",
+      "coverImageUrl": "string",
       "startDate": "string(YYYY-MM-DD)",
       "totalDays": "number",
       "tags": ["string"],
@@ -52,18 +53,24 @@
             "stops": [
               {
                 "sequence": "number",
-                "placeId": "string",
-                "placeName": "string",
-                "category": "string",
-                "latitude": "number",
-                "longitude": "number",
                 "arrivalTime": "string(HH:mm)",
                 "stayMinutes": "number",
                 "memo": "string",
-                "transportToNext": "walking | transit | driving | taxi | none",
-                "travelMinutesToNext": "number",
-                "cost": "number",
-                "reason": "string"
+                "reason": "string",
+                "place": {
+                  "placeId": "string",
+                  "placeName": "string",
+                  "category": "string",
+                  "latitude": "number",
+                  "longitude": "number"
+                },
+                "transportToNext": {
+                  "type": "walking | transit | driving | taxi | none",
+                  "distance": "number|null",
+                  "minutes": "number|null",
+                  "cost": "number|null",
+                  "memo": "string|null"
+                }
               }
             ]
           }

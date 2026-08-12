@@ -34,12 +34,13 @@ placeId: Google Place ID 또는 내부 장소 ID
     "place": {
       "placeId": "string",
       "placeName": "string",
+      "placeEngName": "string",
       "category": "string",
       "address": "string",
       "latitude": "number",
       "longitude": "number",
       "rating": "number|null",
-      "photoUrls": ["string"],
+      "photoUrl": "string",
       "openingHours": ["string"]
     }
   }

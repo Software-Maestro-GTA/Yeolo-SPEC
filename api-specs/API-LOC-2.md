@@ -18,6 +18,7 @@
 
 ### Query Params
 {
+  "country": "string(optional)",
   "keyword": "string",
   "limit": "number(optional)"
 }
