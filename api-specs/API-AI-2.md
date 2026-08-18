@@ -11,18 +11,22 @@
 ## 2. Request 사양
 
 ### Header
+
 {
-  "X-Internal-Api-Key": "{internalApiKey}",
-  "Content-Type": "application/json"
+"X-Internal-Api-Key": "{internalApiKey}",
+"Content-Type": "application/json"
 }
 
 ### Path Params
+
 {}
 
 ### Query Params
+
 {}
 
 ### Request Body
+
 ```json
 {
   "userId": "string(UUID)",
@@ -41,6 +45,7 @@
 ## 3. Response 사양
 
 ### 성공 응답 (Status 200)
+
 ```json
 event: progress
 data: {
@@ -72,6 +77,7 @@ data: {
               "stayMinutes": "number",
               "memo": "string",
               "reason": "string",
+              "cost": "number",
               "place": {
                 "placeId": "string",
                 "placeName": "string",
@@ -101,12 +107,14 @@ data: {
 ```
 
 ### Error Codes
+
 400: 성향 프로필/여행 조건 누락 또는 형식 오류
 401: 내부 인증 실패
 404: 조건에 맞는 장소 없음
 500: AI 서버 오류
 
 ### 실패 응답
+
 ```json
 {
   "status": 400,
@@ -114,4 +122,3 @@ data: {
   "data": null
 }
 ```
-
