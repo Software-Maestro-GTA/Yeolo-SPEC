@@ -11,16 +11,19 @@
 ## 2. Request 사양
 
 ### Header
+
 {
-  "Authorization": "Bearer {accessToken}"
+"Authorization": "Bearer {accessToken}"
 }
 
 ### Path Params
+
 {
-  "courseId": "string(UUID)"
+"courseId": "string(UUID)"
 }
 
 ### Request Body
+
 ```json
 {}
 ```
@@ -28,6 +31,7 @@
 ## 3. Response 사양
 
 ### 성공 응답 (Status 200)
+
 ```json
 {
   "status": 200,
@@ -57,6 +61,7 @@
                 "stayMinutes": "number",
                 "memo": "string",
                 "reason": "string",
+                "cost": "number",
                 "place": {
                   "placeId": "string",
                   "placeName": "string",
@@ -82,12 +87,14 @@
 ```
 
 ### Error Codes
+
 401: 인증 필요/토큰 만료
 403: 접근 권한 없음
 404: 코스 없음
 500: 서버 오류
 
 ### 실패 응답
+
 ```json
 {
   "status": 404,
