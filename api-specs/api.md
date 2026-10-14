@@ -12,14 +12,13 @@
 | [API-AUTH-2](./API-AUTH-2.md) | Apple OAuth 로그인 | `POST` | `/api/auth/apple` |
 | [API-AUTH-3](./API-AUTH-3.md) | 토큰 재발급 | `POST` | `/api/auth/refresh` |
 | [API-AUTH-4](./API-AUTH-4.md) | 로그아웃 | `POST` | `/api/auth/logout` |
-| [API-BOOKING-1](./API-BOOKING-1.md) | 예약 제휴 링크 조회 | `GET` | `/api/courses/{courseId}/booking-links` |
 | [API-COURSE-1](./API-COURSE-1.md) | 여행 코스 생성 | `POST` | `/api/courses` |
 | [API-COURSE-2](./API-COURSE-2.md) | 여행 코스 조회 | `GET` | `/api/courses/{courseId}` |
 | [API-COURSE-3](./API-COURSE-3.md) | 여행 코스 목록 조회 | `GET` | `/api/courses` |
 | [API-COURSE-4](./API-COURSE-4.md) | 여행 코스 삭제 | `DELETE` | `/api/courses/{courseId}` |
-| [API-LOC-1](./API-LOC-1.md) | 국가 자동완성 조회 | `GET` | `/api/locations/countries/autocomplete` |
-| [API-LOC-2](./API-LOC-2.md) | 도시 자동완성 조회 | `GET` | `/api/locations/cities/autocomplete` |
-| [API-PLACE-1](./API-PLACE-1.md) | 여행 장소 조회 | `GET` | `/api/places/{placeId}` |
+| [API-LOC-1](./API-LOC-1.md) | 국가 전체 목록 조회 | `GET` | `/api/locations/countries` |
+| [API-LOC-2](./API-LOC-2.md) | 국가별 도시 전체 목록 조회 | `GET` | `/api/locations/cities` |
+| [API-LOC-3](./API-LOC-3.md) | 국가·도시 키워드 검색 | `GET` | `/api/locations/search` |
 | [API-PREF-1](./API-PREF-1.md) | 사용자 MBTI 등록/수정 | `PATCH` | `/api/users/me/preferences` |
 | [API-PREF-2](./API-PREF-2.md) | 사진 데이터 분석 동의 저장 | `POST` | `/api/users/me/consents/photo` |
 | [API-PREF-3](./API-PREF-3.md) | 취향 분석 | `POST` | `/api/users/me/taste-profile/analysis` |
@@ -29,6 +28,9 @@
 | [API-SHARE-3](./API-SHARE-3.md) | 여행 코스 공유 링크 수락 | `POST` | `/api/share-links/{shareToken}/accept` |
 | [API-USER-1](./API-USER-1.md) | 사용자 프로필 등록/수정 | `PATCH` | `/api/users/me/profile` |
 | [API-USER-2](./API-USER-2.md) | 회원탈퇴 | `DELETE` | `/api/users/me` |
+| [API-USER-3](./API-USER-3.md) | 내 언어 설정 조회 | `GET` | `/api/users/me/language` |
+| [API-USER-4](./API-USER-4.md) | 내 언어 설정 변경 | `POST` | `/api/users/me/language` |
+| [~~API-PLACE-1~~](./~~API-PLACE-1~~.md) | 여행 장소 조회 | `GET` | `/api/places/{placeId}` |
 
 ---
 

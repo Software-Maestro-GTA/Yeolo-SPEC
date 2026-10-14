@@ -12,7 +12,8 @@
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}"
+  "Authorization": "Bearer {accessToken}",
+  "Accept-Language": "ko"
 }
 
 ### Request Body
@@ -25,63 +26,29 @@
 ### 성공 응답 (Status 200)
 ```json
 {
-  "status": 200,
-  "message": "성향 프로필 조회 성공",
-  "data": {
-    "tasteProfile": {
-      "tasteProfileId": "string(UUID)",
-      "userId": "string(UUID)",
-      "updatedAt": "string(YYYY-MM-DD)",
-      "travelPurpose": {
-        "relaxation": "number(1-5)",
-        "sightseeing": "number(1-5)",
-        "culturalExperience": "number(1-5)",
-        "gourmet": "number(1-5)",
-        "natureExploration": "number(1-5)",
-        "activity": "number(1-5)",
-        "shopping": "number(1-5)",
-        "festivalEvent": "number(1-5)",
-        "wellness": "number(1-5)",
-        "selfDevelopment": "number(1-5)"
-      },
-      "travelPaceDensity": "slow_stay | balanced | dense_schedule | spontaneous | long_stay",
-      "preferredLocationType": {
-        "bigCity": "number(1-5)",
-        "smallTownAlley": "number(1-5)",
-        "natureHinterland": "number(1-5)",
-        "beachResort": "number(1-5)",
-        "mountainPlateau": "number(1-5)",
-        "historicalCity": "number(1-5)",
-        "themeParkResort": "number(1-5)",
-        "famousSpotPreferred": "number(1-5)",
-        "hiddenSpotPreferred": "number(1-5)"
-      },
-      "activityPreference": {
-        "viewing": "number(1-5)",
-        "experience": "number(1-5)",
-        "adventure": "number(1-5)",
-        "photographyVideo": "number(1-5)",
-        "gourmetExploration": "number(1-5)",
-        "nightlife": "number(1-5)",
-        "shopping": "number(1-5)",
-        "relaxation": "number(1-5)",
-        "localInteraction": "number(1-5)"
-      },
-      "spendingTendency": "cost_effective | moderate | luxury",
-      "companionType": "solo | couple | friends | family | with_children | with_parents | group | with_pet | social",
-      "foodPreference": {
-        "localFoodActive": "number(1-5)",
-        "famousRestaurantCentered": "number(1-5)",
-        "streetFood": "number(1-5)",
-        "cafeDessert": "number(1-5)",
-        "fineDining": "number(1-5)",
-        "familiarFoodPreferred": "number(1-5)",
-        "dietaryRestriction": "number(1-5)",
-        "sightseeingOverFood": "number(1-5)"
-      },
-      "seasonalEnvironmentPreference": ["warm_region | cold_region | summer_resort | winter_sports | spring_flower_autumn_foliage | dry_weather | off_season | peak_season"]
-    }
-  }
+  "status": "number",
+  "message": "string",
+  "data": {
+    "intro": "string",
+    "hashtags": [
+      "string"
+    ],
+    "types": [
+      {
+        "typeCode": "string",
+        "typeName": "string",
+        "lowName": "string",
+        "highName": "string",
+        "score": "number"
+      }
+    ],
+    "recommendCity": {
+      "countryName": "string",
+      "cityName": "string",
+      "imageUrl": "string",
+      "reason": "string"
+    }
+  }
 }
 ```
 
@@ -93,9 +60,9 @@
 ### 실패 응답
 ```json
 {
-  "status": 404,
-  "message": "저장된 성향 프로필이 없습니다.",
-  "data": null
+  "status": 404,
+  "message": "저장된 성향 프로필이 없습니다.",
+  "data": null
 }
 ```
 

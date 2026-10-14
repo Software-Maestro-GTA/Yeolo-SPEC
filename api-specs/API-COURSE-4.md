@@ -12,7 +12,8 @@
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}"
+"Authorization": "Bearer {accessToken}",
+"Accept-Language": "ko"
 }
 
 ### Path Params

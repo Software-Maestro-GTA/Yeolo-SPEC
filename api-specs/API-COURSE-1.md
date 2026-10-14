@@ -12,8 +12,9 @@
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}",
-  "Content-Type": "application/json"
+"Authorization": "Bearer {accessToken}",
+"Content-Type": "application/json",
+"Accept-Language": "ko"
 }
 
 ### Request Body
@@ -23,7 +24,7 @@
   "destinationCity": "string",
   "startDate": "string(YYYY-MM-DD)",
   "totalDays": "number",
-  "budgetType": "cost_effective | moderate | luxury"
+  "budget": "number"
 }
 ```
 

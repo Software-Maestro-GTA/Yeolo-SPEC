@@ -1,4 +1,4 @@
-# [API-PLACE-1] 여행 장소 조회
+# [~~API-PLACE-1~~] 여행 장소 조회
 
 ## 1. 기본 정보
 
@@ -12,7 +12,8 @@
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}"
+"Authorization": "Bearer {accessToken}",
+"Accept-Language": "ko"
 }
 
 ### Path Params
@@ -44,7 +45,7 @@ placeId: Google Place ID 또는 내부 장소 ID
       "openingHours": ["string"]
     }
   }
-}
+};
 ```
 
 ### Error Codes

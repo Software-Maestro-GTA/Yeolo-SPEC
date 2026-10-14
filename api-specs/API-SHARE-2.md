@@ -11,7 +11,9 @@
 ## 2. Request 사양
 
 ### Header
-{}
+{
+"Accept-Language": "ko"
+}
 
 ### Path Params
 {

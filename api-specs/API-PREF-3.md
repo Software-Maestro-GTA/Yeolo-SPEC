@@ -12,8 +12,9 @@
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}",
-  "Content-Type": "application/json"
+"Authorization": "Bearer {accessToken}",
+"Content-Type": "application/json",
+"Accept-Language": "ko"
 }
 
 ### Request Body

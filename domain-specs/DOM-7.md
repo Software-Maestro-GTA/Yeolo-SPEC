@@ -1,4 +1,4 @@
-# [DOM-7] 아고다 파트너스 연동 프로세스
+# [DOM-7] trip.com 파트너스 연동 프로세스
 
 ## 목적
 
@@ -9,28 +9,28 @@
 
 - 예약 처리 주체: 실제 예약 및 결제, 취소, 환불, 예약 변경은 모두 Trip.com 정책을 따른다.
 - 연동 방식 (MVP):
-    - 개발 속도 극대화 및 출시 일정 단축을 위해 **앱 클라이언트 코드에 고정 제휴 랜딩 URL을 탑재**하여 즉시 호출한다.
-    - 첫 접속 시 부여되는 30일 추적 쿠키(Cookie)를 활용하여, 진입 후 사용자가 직접 검색·결제하더라도 정산 수수료가 정상 집계되도록 한다.
+  - 개발 속도 극대화 및 출시 일정 단축을 위해 **앱 클라이언트 코드에 고정 제휴 랜딩 URL을 탑재**하여 즉시 호출한다.
+  - 첫 접속 시 부여되는 30일 추적 쿠키(Cookie)를 활용하여, 진입 후 사용자가 직접 검색·결제하더라도 정산 수수료가 정상 집계되도록 한다.
 - 수익 구조: 사용자가 해당 제휴 링크를 통해 예약·결제를 완료하면 Trip.com 파트너스 정책에 따라 제휴 수수료가 발생한다.
 - 파라미터 노출 안전성: Allianceid와 SID는 공개 식별자이므로 클라이언트 코드 내 상수(Constants)로 등록하여 사용한다.
 
 ## 사용자 플로우
 
 1. 여행 코스 확인 화면 진입
-2. [숙소 예약하기] 또는 [항공권 예약하기] 버튼 선택
-3. 앱 내부 상수로 정의된 Trip.com 제휴 URL 호출
-4. 외부 브라우저(또는 인앱 브라우저 / Trip.com 앱)로 이동
-5. 사용자가 Trip.com에서 직접 예약 및 결제 진행
+1. [숙소 예약하기] 또는 [항공권 예약하기] 버튼 선택
+1. 앱 내부 상수로 정의된 Trip.com 제휴 URL 호출
+1. 외부 브라우저(또는 인앱 브라우저 / Trip.com 앱)로 이동
+1. 사용자가 Trip.com에서 직접 예약 및 결제 진행
 
 ## 앱 클라이언트 구현
 
 앱 내부 환경변수 또는 상수 파일에 해당 URL을 등록하여 버튼 클릭 이벤트에 연결한다.
 
 - 상수 정의:
-    - TRIP_HOTEL_URL: https://kr.trip.com/hotels/w/home?Allianceid=9936872&SID=327895947
-    - TRIP_FLIGHT_URL: https://kr.trip.com/flights/?locale=ko-KR&curr=KRW&Allianceid=9936872&SID=327895947
+  - TRIP_HOTEL_URL: https://kr.trip.com/hotels/w/home?Allianceid=9936872&SID=327895947
+  - TRIP_FLIGHT_URL: https://kr.trip.com/flights/?locale=ko-KR&curr=KRW&Allianceid=9936872&SID=327895947
 - 클라이언트 처리:
-    - 별도의 서버 네트워크 요청 없이 버튼 클릭 시 즉시 openURL(TRIP_HOTEL_URL) / openURL(TRIP_FLIGHT_URL) 실행.
+  - 별도의 서버 네트워크 요청 없이 버튼 클릭 시 즉시 openURL(TRIP_HOTEL_URL) / openURL(TRIP_FLIGHT_URL) 실행.
 
 ## 화면 처리
 

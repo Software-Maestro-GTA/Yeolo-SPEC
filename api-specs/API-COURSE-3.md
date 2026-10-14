@@ -5,14 +5,15 @@
 - **Method**: `GET`
 - **Endpoint**: `/api/courses`
 - **통신 방식**: REST
-- **인증 필요**: Y
+- **인증 필요**: N
 - **Success Status**: `200`
 
 ## 2. Request 사양
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}"
+"Authorization": "Bearer {accessToken}",
+"Accept-Language": "ko"
 }
 
 ### Request Body
@@ -38,12 +39,11 @@
         "startDate": "string(YYYY-MM-DD)",
         "totalDays": "number",
         "tags": ["string"],
-        "recommendationReason": "string",
         "createdAt": "string(ISO-8601)"
       }
     ]
   }
-}
+};
 ```
 
 ### Error Codes

@@ -13,7 +13,8 @@
 ### Header
 
 {
-"Authorization": "Bearer {accessToken}"
+"Authorization": "Bearer {accessToken}",
+"Accept-Language": "ko"
 }
 
 ### Path Params
@@ -43,21 +44,20 @@
       "title": "string",
       "destinationCountry": "string",
       "destinationCity": "string",
-      "coverImageUrl": "string",
       "startDate": "string(YYYY-MM-DD)",
       "totalDays": "number",
+      "totalCost": "number",
+      "totalCostExRate": "number",
+      "exRateIcon": "string",
       "tags": ["string"],
-      "recommendationReason": "string",
       "itinerary": {
         "days": [
           {
             "day": "number",
             "date": "string(YYYY-MM-DD)",
-            "memo": "string",
             "stops": [
               {
                 "sequence": "number",
-                "arrivalTime": "string(HH:mm)",
                 "stayMinutes": "number",
                 "memo": "string",
                 "reason": "string",
@@ -67,7 +67,7 @@
                   "placeName": "string",
                   "category": "string",
                   "latitude": "number",
-                  "longitude": "number"
+                  "longitude": "number",
                 },
                 "transportToNext": {
                   "type": "walking | transit | driving | taxi | none",
@@ -83,7 +83,7 @@
       }
     }
   }
-}
+};
 ```
 
 ### Error Codes

@@ -12,8 +12,9 @@
 
 ### Header
 {
-  "Authorization": "Bearer {refreshToken}",
-  "Content-Type": "application/json"
+"Authorization": "Bearer {refreshToken}",
+"Content-Type": "application/json",
+"Accept-Language": "ko"
 }
 
 ### Request Body

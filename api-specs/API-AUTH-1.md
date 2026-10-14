@@ -12,7 +12,8 @@
 
 ### Header
 {
-  "Content-Type": "application/json"
+"Content-Type": "application/json",
+"Accept-Language": "ko"
 }
 
 ### Request Body
@@ -45,7 +46,7 @@
     "accessToken": "string",
     "refreshToken": "string"
   }
-}
+};
 ```
 
 ### Error Codes

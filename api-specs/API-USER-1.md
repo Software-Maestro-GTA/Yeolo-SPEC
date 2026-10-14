@@ -12,8 +12,9 @@
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}",
-  "Content-Type": "multipart/form-data"
+"Authorization": "Bearer {accessToken}",
+"Content-Type": "multipart/form-data",
+"Accept-Language": "ko"
 }
 
 ### Request Body
@@ -21,7 +22,7 @@
 {
   "displayName": "string|null",
   "profileImage": "file|null"
-}
+};
 ```
 
 ## 3. Response 사양
