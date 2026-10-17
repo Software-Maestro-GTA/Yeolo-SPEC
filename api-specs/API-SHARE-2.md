@@ -40,6 +40,7 @@
       "title": "string",
       "destinationCountry": "string",
       "destinationCity": "string",
+      "coverImageUrl": "string",
       "startDate": "string(YYYY-MM-DD)",
       "totalDays": "number"
     },
