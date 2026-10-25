@@ -78,7 +78,7 @@ data: {
               "reason": "string",
               "cost": "number",
               "place": {
-                "placeId": "string",
+                "googlePlaceId": "string",
                 "placeName": "string",
                 "category": "string",
                 "latitude": "number",

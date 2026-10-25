@@ -1,182 +1,277 @@
 # [DOM-5] 코스 생성 프로세스
 
-> 💡 **취향으로 후보를 제안하고, Google에서 실제 장소와 경로를 확인한 뒤 일정을 완성합니다.**
+> 💡 **취향에 맞는 후보를 LLM이 제안하고 → Google로 장소·경로를 확인하고 → 서버가 일정을 구성한 뒤 → 표시 문구를 사용자 언어로 정리합니다.**
 
-LangGraph가 날짜별 생성·검증·복구를 관리하고 실제 진행 상황을 SSE로 전달합니다. 정상 일정은 하루 최소 5곳을 목표로 합니다.
+정상 목표는 하루 5곳 이상입니다. 일부 장소·경로·번역 오류는 해당 항목을 복구하며, 이미 확보한 일정을 최대한 유지합니다.
 
-**정리 기준:** 2026-10-15 · 현재 Yeolo-AI 로컬 코드와 확인한 검증 결과. 미커밋 변경을 포함하며 운영 배포 상태를 의미하지 않습니다.
+**기준:** 2026-10-19 · [코드 ](https://github.com/Software-Maestro-GTA/Yeolo-AI/tree/f3684f48df25a6c560249b5271d0ed381603e01e/)[`f3684f4`](https://github.com/Software-Maestro-GTA/Yeolo-AI/tree/f3684f48df25a6c560249b5271d0ed381603e01e/) 기준. 설정값은 코드 기본값이며 운영 환경에서 달라질 수 있습니다.
 
-**핵심:** 취향 프로필 우선 · 날짜별 LLM 병렬 호출 · Google Essentials · 요청 안의 중복 조회 방지 · 부족한 날짜만 복구 · 확보한 항공·숙박 견적 합산.
-
-
-## 1. 입력과 결과
-
-**API:** `POST /internal/ai/courses` · 내부 인증 `X-Internal-Api-Key` · JSON 요청 / SSE 응답.
-
-| 입력 | 역할 |
-| :--- | :--- |
-| `userId` | 사용자·목적지별 최근 생성 이력을 조회합니다. |
-| `language` | 추천 이유·방문 팁·진행 안내의 언어입니다. 예: `ko`, `en`, `ja`. |
-| `tasteProfile` | 여행 목적, 장소·활동·음식·계절 선호, 일정 밀도, 소비 성향, 동행 형태를 반영합니다. |
-| `mbti` | 취향 프로필이 없을 때 후보 제안의 보조 입력입니다. `tasteProfile`을 전달하면 `mbti: null`로 요청할 수 있습니다. |
-| `tripCondition` | 국가·도시·시작일·여행 일수·숫자 예산 `budget`을 전달합니다. 예산 단위는 원화이며 초과가 불가피해도 생성합니다. |
-
-취향 프로필과 MBTI 중 하나 이상이 필요합니다. 국가·도시는 공통 국가 코드·지역 유형·위치 범위로 확인하며 국가별 별칭 예외 목록을 사용하지 않습니다.
-
-| 결과 | 현재 반환 필드 |
-| :--- | :--- |
-| 코스 | `title`, `destinationCountry`, `destinationCity`, `startDate`, `totalDays`, `totalCost`, `tags`, `itinerary` |
-| 일차 | `day`, `date`, `stops` |
-| 방문 | `sequence`, `stayMinutes`, `memo`, `reason`, `cost`, `place`, `transportToNext` |
-| `place` | `placeId`, `placeName`, `category`, `latitude`, `longitude` |
-| 다음 이동 | `type`, `distance`(미터), `minutes`(분), `memo`. 마지막 장소는 `type: none`입니다. |
-
-- 공개 `placeId`는 `ChIJ...` 형태이며 **`places/`**** 접두사를 제거**합니다. 내부 검증·이력의 ID 형식은 유지합니다.
-- `placeName`은 LLM이 제안해 검색한 이름입니다. Google 공식 표시 이름 `displayName`은 조회하지 않습니다.
-- `category`는 **실제 Google 유형**을 앱의 7개 코드로 매핑합니다: FOOD·CAFE·SPOT·CULTURE·NATURE·ACTIVITY·NIGHTLIFE.
-- 대표 이미지·장소 사진·사진 출처, 날짜별 요약, 공개 도착 시각, 상세 주소·평점·영업시간은 응답에서 제외했습니다. 도착 시각은 내부 일정 검증에 사용합니다.
-**API 원문:** [여행 코스 생성](https://app.notion.com/p/9d81d7341cda830a92d981fb2cdc50f7)
+**빠르게 보기:** 1번 흐름도 → 2번 노드 표 → 3번 복구 정책. API 필드·운영값·과거 기록은 아래 펼치기에서 확인합니다.
 
 
-## 2. 전체 생성 흐름
-
-아래는 정상 흐름과 주요 복구 경로입니다. 세부 조건 분기는 단순화했습니다.
+## 1. 한눈에 보는 파이프라인
 
 ```mermaid
 flowchart TD
-  A["prepare · 목적지와 이력 확인"] --> B["draft · 날짜별 후보 병렬 제안"]
-  A --> Q["quote_trip · 항공·숙박 견적"]
-  Q --> QE["견적 분기 종료 · 결과는 상태에 보관"]
-  B --> C["verify_places · 실제 장소 확인"]
-  C --> D["verify_routes · 실제 경로와 일정 검증"]
-  D --> E["schedule · 최종 일정 확인"]
-  E --> F["finalize · 문구·비용·중복 확인"]
-  F --> G["finalize_course · 언어와 비용 안내"]
-  G --> H["전체 작업 정리 후 complete"]
-  D -. "미조회 후보 확인" .-> X["expand_places"]
-  X --> C
-  D -. "부족한 날짜 보충" .-> R["refill"]
-  R --> C
-  D -. "기존 후보 재조합" .-> P["repair"]
-  P --> D
-  D -. "검증한 전체 일정 복원" .-> S["restore"]
-  S --> E
+  IN["요청 검증 · 내부 인증"] --> P["prepare<br>목적지 · 최근 이력"]
+  P --> D["draft<br>날짜별 후보 병렬 제안"]
+  P --> Q["quote_trip<br>항공 · 숙박 견적"]
+  D --> V["verify_places<br>ID · 좌표 · 유형 확인"]
+  V --> R["verify_routes<br>장소 조합 · 경로 · 시간 검사"]
+  R --> S["schedule<br>최종 일정 검사"]
+  S --> F["finalize<br>문구 · 비용 · 이력 저장"]
+  Q -. "견적을 상태에 저장 · 비용에 반영" .-> F
+  F --> L["localize_display<br>장소명 · 메모 번역과 검증"]
+  L --> C["finalize_course<br>비용 안내 · 응답 준비"]
+  C --> END["그래프와 연결 정리 후 complete"]
 ```
 
-`draft`와 `quote_trip`는 같은 단계에서 병렬 실행됩니다. 견적 분기의 종료는 SSE 완료가 아니며 확보한 견적은 최종 비용 계산에 사용합니다.
+실선은 정상 코스 생성 순서, 점선은 견적 데이터가 합산되는 관계입니다. `quote_trip`는 별도 병렬 분기이며 그 분기의 종료가 코스 생성 완료를 뜻하지 않습니다. 복구 분기는 읽기 쉽게 아래에 따로 정리했습니다.
 
-| 노드 | 하는 일 |
+**역할 구분:** LangGraph는 실행·상태·복구를 관리합니다. LLM은 후보 제안과 필요한 문구 번역을 맡고, 장소 확인·동선 계산·일정 검사는 API와 서버 로직이 수행합니다.
+
+
+## 2. 각 노드는 무엇을 하나요?
+
+| 노드 | 핵심 역할 | 다음 단계에 남기는 것 |
+| :--- | :--- | :--- |
+| `prepare` · 준비 | 국가·도시를 식별하고 최근 코스 이력을 읽습니다. | 목적지 범위, 최근 장소·권역, 요청 내 캐시 |
+| `draft` · 후보 제안 | 취향·예산·이력·날짜별 권역 힌트로 하루씩 LLM에 요청합니다. 최대 5개 일자를 병렬 처리합니다. | 날짜별 후보 장소, 식사 역할, 체류 시간·예상 비용 |
+| `quote_trip` · 견적 조회 | 초안 생성과 병렬로 MyRealTrip 항공·숙박을 조회합니다. | 확보한 견적과 미확보 상태 |
+| `verify_places` · 장소 확인 | 이름으로 ID를 찾고 Essentials 상세로 좌표·국가·도시 범위·유형을 확인합니다. | 검증된 장소 후보 풀 |
+| `verify_routes` · 동선 구성 | 후보 조합의 실제 경로와 방문·식사 시간을 검사합니다. 날짜 간 장소 중복을 막고 경로가 확인된 조합을 우선합니다. | 일차별 장소 순서와 이동 정보 또는 `unknown` |
+| `schedule` · 최종 검사 | 요청한 모든 날짜, 장소 순서, 경로 수와 검증 결과의 일치를 확인합니다. | 최종 일자별 일정 |
+| `finalize` · 코스 조립 | 취향과 검증된 유형으로 추천 이유·팁을 구성하고 비용을 합산합니다. 최신 이력과 비교해 저장합니다. | 제목·태그·여행 경비가 포함된 코스 |
+| `localize_display` · 표시 언어 정리 | 필요한 장소명과 이동 메모 등을 요청 언어로 번역·검증합니다. ID·좌표·순서·비용은 보존합니다. | 사용자 언어로 정리한 표시 문구 |
+| `finalize_course` · 응답 준비 | 견적 미포함·예산 초과를 안내하고 완성 코스를 반환합니다. | SSE `complete`에 담을 공개 응답 |
+
+[노드 연결 코드](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/course_graph.py) · [노드 실행 코드](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/course_nodes.py)
+
+
+## 3. 코스를 유지하기 위한 검증·복구
+
+
+### 일정 선택 기준
+
+- **정상 구성:** 관광·체험 3곳 + 서로 다른 점심·저녁 식당 2곳, 합계 5곳 이상. 식당·카페만 늘려 관광·체험 수를 채우지 않습니다.
+- **날짜 간 중복:** 동일 Place ID를 다른 날짜에 다시 배정하지 않습니다. 이전 생성 코스와의 유사도는 별도로 비교합니다.
+- **이동 우선순위:** 실제 경로를 확보한 조합을 우선합니다. 필요한 일수·장소 중복 조건을 지키면서 미확보 구간 수를 최소화합니다.
+- **시간·예산:** 방문·식사 시간과 체류 시간을 맞추고, 예산 이내 조합을 우선합니다. 필수 방문을 유지하기 위해 예산 초과는 허용합니다.
+
+### 오류가 생겼을 때
+
+| 상황 | 현재 처리 |
 | :--- | :--- |
-| `prepare` | 목적지의 국가 코드·도시 유형·좌표 범위를 확인하고 최근 이력을 읽습니다. 이력 DB 장애는 제한된 중복 방지 상태로 계속 진행합니다. |
-| `draft` | 날짜별 가까운 후보 9~10개를 제안합니다. 명소 최소 5개, 점심·저녁 대안 각 2개를 요청하며 최대 5일을 병렬 처리합니다. |
-| `quote_trip` | MyRealTrip 항공·숙박 견적을 조회합니다. 실패한 항목은 비용 미확보로 처리합니다. |
-| `verify_places` | ID 검색 후 좌표·주소·국가·유형을 검증합니다. 음식점과 명소 역할을 구분하고 지역 중심점·교통시설·부적합한 업종을 제외합니다. |
-| `verify_routes` | 실제 이동 거리·시간, 체류·식사 시간, 날짜 간 장소 중복을 확인합니다. 실패한 날짜의 대안만 다시 검사합니다. |
-| `schedule` | 모든 날짜, 방문 순서, 장소·이동 누락과 중복을 최종 확인합니다. |
-| `finalize` | 검증된 유형과 취향으로 추천 문구를 작성하고 제목·태그·totalCost를 구성합니다. 최신 SQLite 이력을 확인해 저장합니다. |
-| `finalize_course` | 요청 언어로 문구를 정리하고 견적 미포함·예산 초과를 진행 이벤트로 안내합니다. |
+| 개별 장소가 삭제되었거나 상세 데이터가 잘못됨 | 해당 후보를 제외하고 다른 후보를 확인합니다. 인증·전체 설정 오류까지 정상 결과로 숨기지는 않습니다. |
+| 검증 후보 또는 방문 수가 부족함 | 미조회 후보 확인 → 추가 초안·부족 일자 보충 → 기존 후보 재조합을 조건에 따라 수행합니다. |
+| 경로 조회 실패 | 허용된 실제 대안 수단을 확인합니다. 끝내 확보하지 못한 구간은 `unknown`으로 남기고 코스는 유지합니다. |
+| 실제 조회된 이동이 90분을 초과함 | 장소 조합·순서를 다시 검토합니다. 긴 경로를 `unknown`으로 바꾸어 통과시키지 않습니다. |
+| 항공·숙박 견적 또는 이력 DB 오류 | 견적은 확보분만 반영하고, 이력 DB는 중복 방지 범위가 제한된 상태로 진행합니다. |
+| 문구 번역 오류·시간 초과 | 정상 번역은 유지합니다. 실패 항목만 최대 한 번 보완하고, 그래도 실패한 장소명·이동 메모는 원문을 보존합니다. |
+| 복구를 끝내도 필요한 전체 일정을 확보하지 못함 | 이미 검증한 전체 일정이 있으면 복원합니다. 반환할 일정이 없으면 실패로 종료합니다. |
 
+**`unknown`****과 ****`none`****은 다릅니다.** `unknown`은 다음 장소가 있지만 경로 미확보인 상태로 거리·시간·메모가 모두 null입니다. `none`은 하루 마지막 장소처럼 다음 이동이 없으며 거리·시간은 0, 메모는 null입니다. 직선거리를 실제 이동 거리·시간처럼 반환하지 않습니다.
 
-## 3. 일정 기준과 복구
+<details><summary>복구 노드와 일정 하한 자세히 보기</summary>
 
-
-### 정상 일정 기준
-
-- **하루 최소 5곳 = 관광·체험 명소 3곳 + 서로 다른 점심·저녁 식당 2곳.** 식당·카페·베이커리·디저트점은 관광·체험 3곳을 대신하지 않습니다.
-- 일정 밀도에 따라 최대 5·6·7곳을 구성합니다. 검증된 5곳을 확보하면 선택적인 추가 장소 때문에 생성을 계속 늘리지 않습니다.
-- 활동 09:00–21:00, 조식 09:00–11:00, 점심 11:30–14:00, 저녁 17:30–20:00입니다. 체류 전체가 해당 시간 안에 들어가야 하며 조식은 선택 사항입니다.
-- 이동은 **실제 조회 시간 구간별 90분 이하**, 이동 후 여유 10분을 반영합니다. 같은 코스의 다른 날짜에도 같은 장소 ID를 반복 배정하지 않습니다.
-
-### 부족한 날짜만 복구합니다
-
-1. **`expand_places`**: 처음에는 일정 밀도에 따른 5~7개 후보만 확인합니다. 부족한 날짜의 미조회 후보를 2개씩 추가 확인합니다.
-1. **`draft`**** / ****`refill`**: 초기 초안 단계는 1일 요청 최대 2회, 여러 날 최대 3회입니다. 부족한 날짜에는 별도 보충을 최대 2회 수행할 수 있습니다. 성공한 날짜·부분 응답·장소·경로 캐시는 유지합니다.
-1. **`repair`**: 기존 검증 후보의 조합·순서·체류 대안을 비교하고 실제 경로로 다시 검사합니다.
-1. **`restore`**: 개선 도중 오류나 시간 부족이 생기면 이미 확보한 검증된 전체 일정으로 복구합니다.
-정상 5곳을 먼저 탐색하며, 보충과 정상 대안 탐색을 소진한 뒤에만 **4곳 → 3곳**을 최후 대안으로 비교합니다. 축소 결과에도 서로 다른 점심·저녁과 실제 명소·경로가 필요합니다.
-
-> 💡 **현재 검증 범위**
-
-실제 ID·좌표·국가·도시 범위·유형과 조회된 경로를 확인합니다. **폐업·휴업·영업시간·예약 가능 여부·공식 장소명과 제안 이름의 완전한 일치는 현재 검증하지 않습니다.**
-
-직선거리는 후보 선택·대안 판단에만 쓰며 이동 시간·거리로 반환하지 않습니다. 끝내 검증 가능한 일정이 없으면 가짜 장소·경로로 성공 결과를 만들지 않습니다.
-
-
-## 4. 추천 문구와 여행 경비
-
-| 항목 | 작성 방식 |
+| 복구 노드 | 사용 방식 |
 | :--- | :--- |
-| 장소 `reason` | 검증된 유형의 경험과 실제 4~5점 취향을 연결합니다. MBTI로 관심사를 단정하거나 일정 시각·체류 시간을 추천 이유로 반복하지 않습니다. |
-| 장소 `memo` | 유형에 맞는 방문 행동 팁입니다. 확인하지 않은 역사·시설·혼잡·예약·알레르기 안전을 사실처럼 추가하지 않습니다. |
-| 이동 `memo` | 같은 Routes 응답의 탑승·환승·하차·도보 안내를 짧게 정리합니다. 문구 처리 실패 시 일반 길찾기 안내로 대체하며 실제 경로 수치는 유지합니다. |
-| 언어 | 한국어는 서버 문구로 작성해 추가 문구 LLM을 호출하지 않습니다. 다른 언어는 확정된 제목·태그·추천 이유·방문 팁만 선택적으로 번역하고 실패 시 유형 기반 현지화 문구를 사용합니다. 장소명은 보존합니다. |
+| `expand_places` | 부족한 날짜의 기존 미조회 후보부터 확인합니다. 새 LLM 호출 전에 활용합니다. |
+| `draft` / `refill` | 성공한 날짜·부분 응답·조회 캐시를 유지하며 필요한 날짜를 다시 제안하거나 보충합니다. |
+| `repair` | 이미 검증된 장소의 조합·순서·체류 대안을 비교하고 경로를 재검사합니다. |
+| `restore` | 개선 도중 오류나 시간 부족이 생기면 확보해 둔 전체 일정으로 되돌립니다. |
 
-`course_copy.py`, `enrich_place_copy`, 사진 보완·날짜별 요약은 현재 생성 흐름에서 제거되었습니다.
+모든 복구 노드를 순서대로 항상 실행하는 구조는 아닙니다. `feedback`, 미조회 후보, 시도 횟수, 남은 시간, 보관된 전체 일정의 상태를 보고 다음 노드를 선택합니다.
+
+정상 목표는 5곳이며 밀도에 따라 5·6·7곳을 구성합니다. 정상 방문 수 확보와 보충을 우선한 뒤 최후 복구에서 4곳 → 3곳 대안도 허용합니다. 따라서 항상 하루 5곳을 보장하는 구현은 아닙니다.
+
+활동 시간은 09:00–21:00, 점심 11:30–14:00, 저녁 17:30–20:00입니다. 선택 조식은 09:00–11:00입니다. 체류 전체가 시간 창에 들어가야 하며 이동 후 10분 여유를 반영합니다.
+
+`unknown` 뒤의 내부 시각은 잠정값입니다. 이동 시간 0분이 확인된 것이 아니며, 해당 시각을 확정 대중교통 출발 시각으로 전달하지 않습니다. 공개 응답에는 도착 시각을 담지 않습니다.
+
+[복구 분기](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/course_transitions.py) · [일정 조합](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_planning.py)
+
+</details>
+
+> 💡 **현재 검증의 범위**
+
+Place ID·좌표·국가·도시 범위·유형과 조회된 경로를 확인합니다. 폐업·휴업·영업시간·예약 가능 여부와 Google 공식 표시 이름은 현재 조회하지 않습니다. 경로가 `unknown`인 코스의 전체 이동 가능성이나 번역의 의미적 정확성까지 보장하는 것은 아닙니다.
 
 
-### totalCost에 포함되는 금액
+## 4. 추천 이유·메모·번역
+
+| 표시 항목 | 작성 근거 |
+| :--- | :--- |
+| 장소 `reason` | 검증된 장소 유형과 실제 취향 점수 4·5점의 선호를 연결한 서버 문구입니다. 일정 시각·체류 시간을 추천 이유로 반복하지 않습니다. |
+| 장소 `memo` | 검증된 유형에 맞는 방문 행동 팁입니다. 확인하지 않은 시설·역사·예약 조건을 새 사실로 만들지 않습니다. |
+| 이동 `memo` | 기존 Routes 응답의 도보 행동, 탑승·환승·하차 정보로 만듭니다. 외국어가 섞이면 메모 전체를 번역 단위로 사용합니다. |
+| 장소 `placeName` | 검색에 사용한 제안 이름을 바탕으로 표시 언어를 정리합니다. Google의 공식 `displayName`을 가져오는 방식은 아닙니다. |
+
+`localize_display`는 표시 텍스트만 다룹니다. 번역한 장소명을 추천 이유·메모에도 재사용하고, 숫자·노선 코드·Place ID·좌표·비용·방문 순서는 유지합니다. 정상 문구를 다른 항목의 오류 때문에 함께 버리지 않습니다.
+
+**ABTO의 역할:** 모델 A/B 테스트·라우팅입니다. 번역은 연결된 LLM이 수행합니다. 후보 생성과 번역 모두 기존 `course.candidates.generate`를 공유하며, 번역 전용 ABTO 경로나 별도 번역 서버는 만들지 않습니다. 경로를 공유해도 후보 생성과 번역은 각각의 LLM 요청입니다.
+
+<details><summary>번역 호출 수·검증·실패 처리</summary>
+
+- 외국어·혼합 문구가 없는 한국어 코스는 번역 LLM을 호출하지 않습니다.
+- 번역 대상은 중복을 제거해 일괄 1회 요청합니다. 비한국어 요청에서는 제목·태그·추천 이유·방문 팁과 장소명·이동 안내를 같은 처리에 모읍니다.
+- 누락·검증 실패 항목만 최대 1회 보완합니다. 최초·보완 요청은 합계 최대 60초와 전체 생성의 남은 시간을 공유합니다.
+- 문장 ID, 보호한 숫자·노선 코드, 문자 체계를 검사합니다. 문자 검사는 같은 문자 체계를 쓰는 언어의 완벽한 판별이나 의미 보증은 아닙니다.
+- 번역 실패 시 사용자 선택에 따라 원문 장소명·이동 메모를 유지합니다. 방문 팁·추천 이유 등은 필요하면 기존 언어별 유형 문구로 보완합니다.
+[번역 서비스](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_localization.py) · [번역 단위·적용 검사](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/route_copy.py) · [추천 이유 작성](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_reasons.py)
+
+</details>
+
+
+## 5. 외부 API·비용·중복 조회
+
+| 연동 | 사용 지점 | 현재 호출 범위 |
+| :--- | :--- | :--- |
+| LLM · 기존 ABTO 경유 | `draft` / `refill`, `localize_display` | 날짜별 후보 제안, 필요한 표시 문구 번역. 두 작업은 같은 feature ID를 공유합니다. |
+| Google Text Search | 목적지·장소 검색 | `places.id`만 요청하는 **Essentials IDs Only** |
+| Google Place Details | 목적지·장소 확인 | 주소 구성요소·유형·좌표 또는 목적지 범위에 대한 **Essentials** |
+| Google Routes | 후보 동선 확인 | 실제 거리·시간과 같은 응답의 도보·대중교통 안내. 현재 코드의 SKU 분류는 **Essentials** |
+| MyRealTrip Partner / MCP | `quote_trip` | 공항 식별, 왕복 항공 검색, 숙박 검색·상세, 필요한 경우 숙박 지역명 확인 |
+
+현재 흐름에는 Text Search Pro, Places 사진·고급 상세, 별도 Geocoding API 호출이 없습니다. 생성 요청이 끝나면 요청 내 메모리 캐시도 끝납니다.
+
+<details><summary>Google 필드와 요청 재사용 자세히 보기</summary>
+
+- ID 검색: `places.id`
+- 국가·도시 상세: `id,addressComponents,types,viewport`
+- 방문 장소 상세: `id,formattedAddress,addressComponents,location,types`
+- Routes: 실제 거리·시간, 도보 지시, 이동수단, 승하차 정류장·노선·행선지. 안내문을 위해 별도 상세 API를 호출하지 않습니다.
+- 동일 Google HTTP 요청은 메서드·URL·인자를 키로 성공 응답을 공유합니다. 동일한 동시 요청은 잠금으로 중복 실행을 줄입니다.
+- 검증된 장소 사실과 경로도 재사용합니다. 경로 키에는 출발·도착 ID, 수단, 필요한 대중교통 출발 시각이 포함됩니다.
+- Google 조회 언어·수단·출발 시각 등이 바뀌면 새 요청이 필요할 수 있습니다. 실패를 정상 경로처럼 캐시하지 않습니다.
+- MyRealTrip의 동일 공항·숙박 지역 식별도 한 요청 안에서 공유합니다.
+- API 사용료는 재시도·대안 조회까지 포함한 HTTP 호출 수와 LLM 토큰 수에 따라 달라집니다. `maps_cost.py`는 코드에 저장된 가격표로 추정값을 기록하며 실제 청구서가 아닙니다.
+[Google 공급자](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/tools/verified_maps.py) · [호출 비용 계측](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/maps_cost.py)
+
+</details>
+
+
+### totalCost는 여행 경비입니다
 
 ```plain text
 장소별 예상 활동·입장·식사 비용
-+ 확인 가능한 이동 요금
-+ 조회된 왕복 항공권 비용
-+ 조회된 전체 숙박 비용
++ 확보한 이동 요금
++ 조회에 성공한 왕복 항공·전체 숙박 견적
 = totalCost (KRW)
 ```
 
-- 장소 비용은 계획용 예상치이며 실제 메뉴·입장권 가격을 별도로 조회·검증한 값은 아닙니다.
-- 기본 견적 조건은 **인천 출발·성인 1명·객실 1개**입니다. 항공은 첫날 출발·마지막 날 귀국, 숙박은 첫날 체크인·마지막 날 체크아웃입니다. 당일 여행에는 숙박비를 합산하지 않습니다.
-- 견적 실패·시간 초과·요금 검증 실패 시 해당 항목을 제외하고 생성을 계속합니다. 알 수 없는 금액을 임의로 채우지 않습니다. 유료 교통 요금도 확보한 경우만 합산합니다.
-- 견적 미포함·예산 초과는 `progress`로 안내합니다. 완료 응답에는 아직 항공·숙박별 금액과 비용 완전성 필드가 없습니다.
-- 예산은 후보 선택의 목표이며 필수 명소·식사를 유지하면서 불가피한 예산 초과를 허용합니다.
+**생성 API 사용료와 여행 경비는 별도입니다.** 장소 비용은 계획용 예상치입니다. 현재 Routes는 대중교통·택시 요금을 조회하지 않으므로 해당 요금은 합산되지 않습니다. 항공·숙박도 실패한 견적은 제외되어 `totalCost`가 부분합일 수 있습니다.
 
-## 5. 반복 방지와 중복 API 요청 방지
+<details><summary>항공·숙박 조회 조건과 비용 누락 처리</summary>
+
+- 서버 기본 조건은 인천(ICN) 출발·성인 1명·어린이 0명·이코노미 왕복·원화입니다. 현재 API 요청에는 출발 공항·인원·객실 수 필드가 없습니다.
+- 첫날 출발·체크인, 마지막 날 귀국·체크아웃 기준입니다. 당일 여행은 숙박 견적을 조회하지 않습니다.
+- 공항은 실시간 자동완성에서 동일 도시·국가로 확인된 후보를 사용합니다. 도시의 공항을 확보하지 못하면 국가 대표 공항으로 임의 대체하지 않고 항공만 미확보로 둡니다.
+- 숙박은 기간·인원·숙소·국가/도시와 판매 가능한 객실을 확인한 전체 기간 원화 총액만 채택합니다. 1박 표시 가격을 임의로 곱하지 않습니다. 객실 1개라는 명시 파라미터는 현재 전송하지 않습니다.
+- 숙박 상세 지역명 연결에 필요한 경우 공급자의 실시간 지역 자동완성을 보완 사용합니다. 최신화가 필요한 공항 CSV·로컬 지명 카탈로그는 사용하지 않습니다.
+- 확보한 견적을 뺀 잔여 예산으로 장소 비용 조합을 평가합니다. 견적 미포함·예산 초과는 `progress`로 안내하고 코스는 반환합니다.
+- 완료 응답에는 아직 항목별 비용·미확보 상태를 별도 필드로 제공하지 않습니다.
+[견적 연동](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/myrealtrip_quotes.py) · [비용 합산](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_budget.py)
+
+</details>
+
+<details><summary>최근 생성 이력과 코스 다양성</summary>
+
+**SQLite는 완성 코스를 그대로 재사용하는 LLM 응답 캐시가 아닙니다.** 사용자·목적지별 장소 ID와 핵심 명소·계획 권역·경험 구성을 저장하여 다음 생성의 반복을 줄입니다.
+
+- 기본 보관 범위: 최근 30일, 사용자·목적지당 20개, 전체 최대 10,000개.
+- 전체 장소·핵심 명소·계획 권역의 중복을 별도로 비교합니다. 공통 항목 수를 두 집합 중 작은 크기로 나눈 중복률 40% 이하를 우선 목표로 둡니다.
+- 날짜별 권역 힌트와 최근 이력을 사용해 식당만 바뀌는 유사 코스를 줄입니다. 계획 권역은 모델의 계획 정보이며 행정구역이 검증된 정보는 아닙니다.
+- 같은 코스 안의 Place ID 중복은 금지하지만, 이전 코스와의 다양성은 완화 가능한 목표입니다. 후보 부족·복구 소진·이력 장애 시 유사한 코스를 반환할 수 있습니다.
+- 저장 시 트랜잭션에서 최신 이력을 확인합니다. 여러 서버의 중복 방지는 같은 이력 저장소를 공유하는 범위에 적용됩니다.
+[이력 저장](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_history.py) · [유사도 비교](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_diversity.py)
+
+</details>
 
 
-### 다양한 코스 제안
+## 6. 요청·SSE·시간 예산
 
-SQLite에 사용자·목적지별 **전체 장소 ID·핵심 명소 ID·계획 권역·경험 구성**을 저장합니다. 같은 입력에 이전 코스를 그대로 돌려주는 LLM 응답 캐시는 아닙니다.
+**API:** `POST /internal/ai/courses` · 내부 인증 `X-Internal-Api-Key` · JSON 요청 / SSE 응답.
 
-- 이력 보관: 최근 30일 · 사용자·목적지당 최대 20개 · 전체 최대 10,000개.
-- 전체 장소·핵심 명소 중복률을 별도로 비교해 식당만 바뀐 유사 코스를 줄입니다. 계획 권역은 모델의 계획 정보이며 공식 행정구역 검증 정보가 아닙니다.
-- 중복률은 공통 ID 수 / 두 집합 중 작은 크기이며, 이전 코스별 최댓값을 사용합니다. **40% 이하는 우선 선택 목표**입니다.
-- 방문 수·실제 경로 안전성을 먼저 확보합니다. 다양성 개선이 어려우면 검증된 코스와 반복 안내를 반환할 수 있습니다.
-- 저장 시 트랜잭션으로 최신 이력을 확인합니다. DB 권한·잠금·데이터 오류로 완성한 코스를 폐기하지 않습니다. 이력 보호는 같은 SQLite를 공유하는 범위에 적용됩니다.
+- **`progress`****:** 실제 작업 메시지를 전송합니다. 모든 단계의 `step`은 현재 `GENERATING_ROUTE`입니다.
+- **`complete`****:** 그래프와 연결 정리 후 한 번 전송하며 본문은 `{"course": ...}`입니다.
+- **실패:** 스트림 시작 전 인증·입력·설정 오류는 HTTP 오류 응답입니다. 스트림 시작 후 복구 불가능한 오류는 실패 안내 `progress` 후 `complete` 없이 종료합니다.
+- **연결 유지:** 15초간 이벤트가 없으면 SSE 주석 heartbeat를 보냅니다. 연결 종료·사용자 취소는 실행 중 작업을 취소하고 정리합니다.
+**클라이언트의 성공 기준은 HTTP 200이 아니라 ****`complete`**** 수신입니다.**
 
-### 한 생성 요청 안에서 조회 재사용
+<details><summary>요청·응답 필드와 프런트엔드 연결</summary>
 
-| 대상 | 현재 방안 |
+| 구분 | 현재 필드·의미 |
 | :--- | :--- |
-| 장소 후보 | 정규화한 장소명·영문명·식사 역할로 중복을 제거하고 확인한 장소 사실을 재사용합니다. |
-| 동일 Google HTTP 요청 | 메서드·URL·헤더·본문을 키로 성공 응답을 캐시합니다. 동일 동시 요청은 잠금으로 기다린 뒤 성공 결과를 공유합니다. |
-| 경로 | 출발·도착 ID·이동 수단·대중교통 출발 시각을 키로 실제 경로를 재사용합니다. |
-| 실패 검증 | 같은 단계의 실패 경로·부적합한 조합을 기록합니다. 일시 장애는 다음 초안·보충에서 제한적으로 다시 조회합니다. |
-| 완성된 날짜 | 장소·경로·일정을 유지하고 미완성 날짜만 보충합니다. |
+| 요청 | `userId`, `language`, `tasteProfile` 또는 `mbti`, `tripCondition` |
+| 여행 조건 | `destinationCountry`, `destinationCity`, `startDate`, `totalDays`, `budget`(KRW 숫자) |
+| 코스 | `title`, `destinationCountry`, `destinationCity`, `startDate`, `totalDays`, `totalCost`, `tags`, `itinerary.days` |
+| 일차 | `day`, `date`, `stops` |
+| 방문 | `sequence`, `stayMinutes`, `reason`, `memo`, `cost`, `place`, `transportToNext` |
+| 장소 | `placeId`, `placeName`, `category`, `latitude`, `longitude` |
+| 이동 | `type`, `distance`(m), `minutes`(분), `memo`. 수단은 walking·transit·driving·taxi·unknown·none |
 
-**요청 단위 메모리 캐시**이므로 새 생성 요청과 공유하지 않습니다. 대중교통 출발 시각·수단·조회 언어가 달라지면 새 조회가 필요할 수 있습니다. Google 전체 응답을 SQLite·Redis에 장기 보관하는 기능은 없습니다.
+- `tasteProfile`이 있으면 이를 우선 활용하고, 없으면 MBTI를 후보 제안 입력으로 사용합니다. 둘 중 하나 이상이 필요합니다.
+- 표시 언어는 **본문 ****`language`**를 사용합니다. 현재 라우터는 `Accept-Language` 헤더로 언어를 선택하지 않습니다.
+- 공개 Place ID는 `ChIJ...`처럼 `places/` 접두사를 제거합니다. 이름이 번역되어도 ID·좌표·유형은 유지됩니다.
+- `category`는 Essentials에서 받은 실제 `types`를 FOOD·CAFE·SPOT·CULTURE·NATURE·ACTIVITY·NIGHTLIFE로 매핑합니다.
+- 대표 이미지·장소 사진·사진 출처, 상세 주소·평점·영업시간, 날짜별 요약·도착 시각은 공개 응답에서 제외됩니다.
+- BE/FE의 저장·전달 DTO와 enum은 `unknown`을 허용해야 하며, null 거리·시간을 0이나 도보로 바꿔 표시하지 않아야 합니다.
+관련 명세: [여행 코스 생성](https://app.notion.com/p/9d81d7341cda830a92d981fb2cdc50f7) · [현재 응답 스키마](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/schemas/course.py)
+
+</details>
+
+<details><summary>기본 시간·병렬·탐색 한도</summary>
+
+| 항목 | 코드 기본값 |
+| :--- | :--- |
+| 전체 요청 | `COURSE_TIMEOUT_SECONDS=300`초 |
+| 날짜별 LLM | 요청당 최대 60초, 최대 5개 동시 실행, 일시 오류 시 추가 1회 |
+| 초안·보충 | 초안 라운드: 1일 요청 최대 2회, 여러 날 최대 3회. 부족한 날짜 보충 최대 2회 |
+| 새 날짜별 LLM 요청 시작 | 남은 시간이 최소 10초일 때 |
+| Google HTTP | timeout 6초, 동시 기본 6개·최대 8개, 일시 오류 추가 1회 |
+| 번역 | 최초·보완 합계 최대 60초와 전체 잔여 시간 중 작은 범위 |
+| 항공·숙박 견적 | 공통 기본 제한 8초 |
+| 일차별 후보·조합 | 후보 풀 최대 30개, 경로 조합 초기 최대 4개·보충 12개·repair 16개 |
+
+90초 이내 완료 또는 어떤 장애에서도 항상 성공하는 구조는 아닙니다. 목적지 모호성·필수 지도 인증/요청 오류·후보 부족·복구 소진·전체 제한시간은 실패로 이어질 수 있습니다.
+
+[SSE 서비스](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_service.py) · [후보 병렬 호출](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/course_drafting.py) · [기본 설정](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/core/config.py)
+
+</details>
 
 
-## 6. 외부 API와 생성 비용
+## 7. 추후 개선할 부분
 
-| 연동 | 사용 목적 | 호출·요금 |
-| :--- | :--- | :--- |
-| ABTO → Gemini | 날짜별 후보는 `course.candidates.generate`, 비한국어 선택적 번역은 `course.copy.localize`. | 토큰 과금. 여행 일수·재시도·보충에 따라 호출 수가 달라집니다. |
-| Text Search Essentials IDs Only | 국가·도시·후보 장소를 키워드로 검색해 ID 확보. | `places.id`만 요청 · 무료. |
-| Place Details Essentials | ID로 목적지 범위와 후보 장소의 좌표·주소·유형 확인. | 첫 유료 구간 $0.005/회. |
-| Routes Essentials | 실제 이동 거리·시간과 제공되는 이동 안내 조회. | 첫 유료 구간 $0.005/회. 대안 조합 검증도 호출 수에 포함됩니다. |
-| MyRealTrip | 도착 공항 확인, 왕복 항공·숙박 검색 및 견적 검증. | Partner API와 MCP 사용. Google·LLM 비용 집계에는 포함되지 않습니다. |
+아래는 현재 구현과 구분한 후속 과제입니다.
 
-**Google 요청 필드**
-
-- 검색: `places.id`
-- 후보 장소 상세: `id,formattedAddress,addressComponents,location,types`
-- 국가·도시 상세: `id,addressComponents,types,viewport`
-좌표를 Text Search에서 직접 받으면 Pro 요금이 적용되므로 **무료 ID 검색 → 유료 Essentials 상세 조회**로 구성합니다. 사진·공식 표시 이름·영업 상태·평점·영업시간 필드는 현재 요청하지 않습니다.
-
-Place Details Essentials와 Routes Essentials는 **SKU별 월 10,000회 무료량**이 있습니다. 위 단가는 무료량 초과 후 첫 유료 구간이며 할인·세금은 제외합니다. [Google 공식 요금표](https://developers.google.com/maps/billing-and-pricing/pricing)
+| 개선 방향 | 목적 |
+| :--- | :--- |
+| 실제 출발지·인원·입출국 시간·숙소 입력 | 사용자 조건의 견적과 첫날·마지막 날·숙소 왕복 동선 반영 |
+| 비용 내역·완전성 필드 | 항공·숙박·활동·이동별 금액과 미확보 상태를 완료 응답에서 확인 |
+| 운영 상태·휴무·영업시간 검증 | 폐업·휴업·방문일 이용 가능성 확인. 추가 데이터와 비용 평가 필요 |
+| 목적지 접근 공항·공항 이동 | 공항 없는 도시의 실제 접근 공항과 추가 이동을 검증해 견적 범위 확대 |
+| 경로·문구 품질과 비용 관측 | unknown 비율·언어 잔류·중복률·방문 수·완료 시간·코스당 호출 비용 측정 |
+| SSE·API 명세 정합성 | 실패 이벤트·단계 코드·비용 상태와 오래된 사진 출처 부록 정리 |
+| 해외 시간대·공유 이력·재사용 정책 | 해외 여행일 운행 검증, 여러 서버의 중복 방지, 공급자 정책에 맞는 데이터 재사용 |
+| 장소별 구체적 설명 | 검증 가능한 설명 자료를 확보해 현재 유형 중심 추천 문구 보완 |
 
 
-### 최근 실생성 1회 기록
+## 8. 구현 근거와 과거 기록
+
+이번 정리는 현재 소스와 기존 기록을 대조한 문서 갱신입니다. 새로운 유료 API 호출·코스 실생성은 수행하지 않았습니다.
+
+| 읽을 목적 | 소스 |
+| :--- | :--- |
+| 전체 그래프와 복구 정책 | [course_graph.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/course_graph.py), [course_nodes.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/course_nodes.py), [course_transitions.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/course_transitions.py) |
+| 장소·동선·시간 검증 | [verified_maps.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/agent/tools/verified_maps.py), [course_planning.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_planning.py), [course_routing.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_routing.py) |
+| 문구·번역·분류 | [course_reasons.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_reasons.py), [course_localization.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/course_localization.py), [route_copy.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/route_copy.py), [place_categories.py](https://github.com/Software-Maestro-GTA/Yeolo-AI/blob/f3684f48df25a6c560249b5271d0ed381603e01e/app/services/place_categories.py) |
+
+기능 개선 기록: [LangChain에서 LangGraph로 여행 코스 생성 개선 — 단계별 스트리밍과 검증·보완](https://app.notion.com/p/3ed1d7341cda818aac3aebea8577b825)
+
+<details><summary>이전 서울 2박 3일 실측 기록 — 2026-10-14 당시 코드</summary>
+
+기존 문서의 측정 기록을 보존합니다. 이번 문서 갱신에서 재실행하지 않았으며 현재 파이프라인의 평균 비용·시간을 의미하지 않습니다.
 
 **서울 2박 3일 · 2026-10-14 검증:** 일차별 5/6/5곳, 총 16개 고유 장소, 최종 이동 13구간, 생성 37.947초.
 
@@ -192,59 +287,11 @@ Place Details Essentials와 Routes Essentials는 **SKU별 월 10,000회 무료�
 
 응답·추적·실제 경로 수치를 검증한 사례이며 폐업·휴무 및 전체 동선 품질까지 통과했다는 의미는 아닙니다.
 
-
-## 7. SSE와 운영 기준
-
-- **진행:** 실제 노드 실행 때 `progress`를 보냅니다. `step=GENERATING_ROUTE`를 유지하고 `message`로 현재 작업을 설명합니다. 별도 단계 코드·정량 진행률은 없습니다.
-- **완료:** 그래프·외부 연결을 정리한 뒤 `complete` 한 번, 본문은 `{"course": ...}`입니다.
-- **연결 유지:** 15초간 이벤트가 없으면 SSE 주석 heartbeat를 보냅니다. 취소·연결 종료 시 하위 작업을 취소하고 정리합니다.
-- **오류:** 스트림 전 입력·인증·설정 오류는 JSON 오류 응답입니다. 스트림 시작 후 실패는 안내 `progress`와 함께 `complete` 없이 종료합니다.
-**BE의 성공 기준은 HTTP 200이 아니라 complete 수신입니다.** 스트림 후 실패 동작과 API 명세의 일반 404·500 JSON 표현은 후속 정리가 필요합니다.
-
-<details><summary>시간 제한·ABTO 설정·검증 결과</summary>
-
-- 전체 실행 예산: 기본 `COURSE_TIMEOUT_SECONDS=300`초. 90초 이내 완료를 보장하지 않습니다.
-- 날짜별 LLM: 호출당 최대 60초, 최대 5일 병렬. 일시 오류는 날짜별 추가 1회 재시도하며 남은 시간이 10초 미만이면 새 호출을 시작하지 않습니다.
-- Maps: HTTP timeout 6초, 병렬 기본 6개·최대 8개. timeout·네트워크·429·5xx는 추가 1회 재시도합니다.
-- 후보 풀: 날짜당 최대 30개. 경로 조합은 초기 최대 4개, refill 최대 12개, repair 최대 16개를 비교합니다.
-- 선택적 문구 번역: 최대 15초. 항공·숙박 견적 조회: 기본 8초. 이 단계의 오류로 검증된 코스를 폐기하지 않습니다.
-- ABTO 라우팅: `course.candidates.generate`의 잘못된 `openai : gemini-3.8-flash` Origin을 제외하고 **Gemini L2 100%**로 저장했습니다. 동일 기능의 최소 요청에서 HTTP 200·ABTO 성공 기록을 확인했습니다. 전체 코스 재생성 검증은 아닙니다.
-- 공급자 키는 서버 환경변수에서 읽습니다. Postman에는 내부 인증 키만 전달하며 Gemini·Google·MyRealTrip 키를 요청 본문에 넣지 않습니다. MyRealTrip 키의 실제 인증 성공은 별도 검증 대상입니다.
-- 마지막 전체 검증: **945개 테스트·Ruff·환경·하네스 검사 통과**. 외부 API를 격리한 검증이며 운영 성공률을 의미하지 않습니다. 정적 타입 검사는 미구성입니다.
 </details>
-
-
-## 8. 추후 개선 — 아직 미구현
-
-| 개선 | 목적·필요 조건 |
-| :--- | :--- |
-| 폐업·휴업·영업시간 | 추가 공급자 필드나 별도 검증 자료로 실제 운영·요일별 휴무를 확인합니다. Essentials 단독 범위를 넘어서는 비용을 함께 평가합니다. |
-| 경로 검증 비용 절감 | 이미 확인한 경로를 후보 순위에 반영하고 국내 도보 적합 구간을 먼저 조회하는 개선안입니다. 실제 경로 검증을 유지하며 호출 수·시간·성공률로 비교합니다. |
-| 장소별 구체적 설명 | 검증 가능한 설명 자료로 유형 중심 문구를 보완합니다. |
-| 실제 출발지·인원·숙소·입출국 시각 | 사용자 조건의 견적과 첫날·마지막 날·숙소 왕복 동선을 반영하기 위한 요청 확장입니다. |
-| 비용 내역·완전성 | 항공·숙박·장소·이동별 금액, 미확보 항목, 예산 초과를 완료 응답에 구조화합니다. |
-| 해외 시간대·운행 검증 | 한국 대중교통은 여행일 계획 출발 시각을 반영합니다. 해외 목적지 시간대와 여행일 운행 확인을 보완합니다. |
-| SSE·API 문서 정합성 | 노드별 단계 코드·실패 이벤트·비용 상태를 BE/FE와 정의합니다. API-AI-2의 이전 사진 출처 부록도 현 응답에 맞춰 정리합니다. |
-| 공유 이력·데이터 재사용 | 여러 서버가 공유할 이력 저장소와 정책에 맞는 입력 데이터 재사용을 설계합니다. |
-
-Place ID는 장기 보관할 수 있고 Places 위경도는 최대 30일 임시 캐시할 수 있습니다. 주소·유형·경로 전체 응답까지 같은 기간 저장할 수 있다고 가정하지 않습니다. 좌표만 캐시해도 현재 유형 검증을 유지하려면 상세 조회가 필요할 수 있습니다. [Places 정책](https://developers.google.com/maps/documentation/places/web-service/policies) · [서비스별 저장 조건](https://cloud.google.com/maps-platform/terms/maps-service-terms)
-
-
-## 9. 구현 위치와 과거 기록
-
-| 역할 | 현재 파일 |
-| :--- | :--- |
-| 그래프·노드·분기·LLM 제안 | `app/agent/course_graph.py`, `course_nodes.py`, `course_state.py`, `course_transitions.py`, `course_drafting.py` |
-| 장소·경로·시간 검증 | `app/agent/tools/verified_maps.py`, `app/services/course_planning.py`, `course_routing.py` |
-| 문구·언어·분류 | `app/services/course_reasons.py`, `course_localization.py`, `route_guidance.py`, `place_categories.py` |
-| 비용·견적·생성 이력 | `app/services/course_budget.py`, `myrealtrip_quotes.py`, `maps_cost.py`, `course_history.py` |
-| API·SSE·응답 직렬화 | `app/api/course.py`, `app/services/course_service.py`, `app/schemas/course.py` |
-
-기능 개선 기록: [LangChain에서 LangGraph로 여행 코스 생성 개선 — 단계별 스트리밍과 검증·보완](https://app.notion.com/p/3ed1d7341cda818aac3aebea8577b825)
 
 <details><summary>과거 개선·검증 기록 보기 — 당시 구현 기준</summary>
 
-아래는 기존 기록을 보관한 것입니다. 이전 timeout·추정 도보·LLM 문구 처리·PR 상태와 테스트 수는 당시 상태이며, **현재 동작은 위 1–9절의 최신 본문을 기준**으로 합니다.
+아래는 기존 기록을 보관한 것입니다. 이전 timeout·추정 도보·LLM 문구 처리·PR 상태와 테스트 수는 당시 상태이며, **현재 동작은 위 1–7절의 최신 본문을 기준**으로 합니다.
 
 
 ## 9. 개선 단계별 검증 기록 (2026-10-05~06)
