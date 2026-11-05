@@ -12,7 +12,8 @@
 
 ### Header
 {
-"Accept-Language": "ko"
+"Accept-Language": "ko",
+"X-App-Version": "{appVersion}"
 }
 
 ### Path Params

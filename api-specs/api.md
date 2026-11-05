@@ -19,6 +19,13 @@
 | [API-LOC-1](./API-LOC-1.md) | 국가 전체 목록 조회 | `GET` | `/api/locations/countries` |
 | [API-LOC-2](./API-LOC-2.md) | 국가별 도시 전체 목록 조회 | `GET` | `/api/locations/cities` |
 | [API-LOC-3](./API-LOC-3.md) | 국가·도시 키워드 검색 | `GET` | `/api/locations/search` |
+| [API-MRT-1](./API-MRT-1.md) | 공항 검색 | `GET` | `/api/myrealtrip/airports` |
+| [API-MRT-2](./API-MRT-2.md) | 숙박 지역 검색 | `GET` | `/api/myrealtrip/regions` |
+| [API-MRT-3](./API-MRT-3.md) | 숙소 조회 | `GET` | `/api/myrealtrip/hotels` |
+| [API-MRT-4](./API-MRT-4.md) | 투어 & 티켓 검색 | `GET` | `/api/myrealtrip/tickets` |
+| [API-MRT-5](./API-MRT-5.md) | 항공 검색 제휴 링크 생성 | `POST` | `/api/myrealtrip/flights/link` |
+| [API-MRT-6](./API-MRT-6.md) | 상품 제휴 링크 생성 | `POST` | `/api/myrealtrip/links` |
+| [API-MRT-7](./API-MRT-7.md) | 쿠폰 정보 전송 | `GET` | `/api/myrealtrip/coupons` |
 | [API-PREF-1](./API-PREF-1.md) | 사용자 MBTI 등록/수정 | `PATCH` | `/api/users/me/preferences` |
 | [API-PREF-2](./API-PREF-2.md) | 사진 데이터 분석 동의 저장 | `POST` | `/api/users/me/consents/photo` |
 | [API-PREF-3](./API-PREF-3.md) | 취향 분석 | `POST` | `/api/users/me/taste-profile/analysis` |

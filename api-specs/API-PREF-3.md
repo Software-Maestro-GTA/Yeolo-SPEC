@@ -14,7 +14,8 @@
 {
 "Authorization": "Bearer {accessToken}",
 "Content-Type": "application/json",
-"Accept-Language": "ko"
+"Accept-Language": "ko",
+"X-App-Version": "{appVersion}"
 }
 
 ### Request Body

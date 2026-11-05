@@ -12,8 +12,9 @@
 
 ### Header
 {
-  "Authorization": "Bearer {accessToken}",
-  "Accept-Language": "ko"
+"Authorization": "Bearer {accessToken}",
+"Accept-Language": "ko",
+"X-App-Version": "{appVersion}"
 }
 
 ### Request Body

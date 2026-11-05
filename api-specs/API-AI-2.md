@@ -11,7 +11,6 @@
 ## 2. Request 사양
 
 ### Header
-
 {
 "X-Internal-Api-Key": "{internalApiKey}",
 "Content-Type": "application/json",
@@ -19,15 +18,12 @@
 }
 
 ### Path Params
-
 {}
 
 ### Query Params
-
 {}
 
 ### Request Body
-
 ```json
 {
   "userId": "string(UUID)",
@@ -47,7 +43,6 @@
 ## 3. Response 사양
 
 ### 성공 응답 (Status 200)
-
 ```json
 event: progress
 data: {
@@ -100,14 +95,12 @@ data: {
 ```
 
 ### Error Codes
-
 400: 성향 프로필/여행 조건 누락 또는 형식 오류
 401: 내부 인증 실패
 404: 조건에 맞는 장소 없음
 500: AI 서버 오류
 
 ### 실패 응답
-
 ```json
 {
   "status": 400,
@@ -122,12 +115,14 @@ data: {
 
 사용자 승인에 따라 완료 응답에 사진 출처 전용 필드 두 개를 추가합니다. `reason`은 장소 추천의 근거, 장소 `memo`는 방문 팁, `transportToNext.memo`는 이동 안내로 사용합니다. 사진 출처를 이 본문에 합치지 않습니다.
 
+
 ### 추가한 필드
 
-| 경로                                                     | 타입·기본값       | 사용 방식        |
-| :------------------------------------------------------- | :---------------- | :--------------- | -------------------------------------------------------------- |
-| `course.coverImageAttribution`                           | `PhotoAttribution | null`, 기본 null | 대표 이미지로 선택한 장소 사진과 같은 출처입니다.              |
+| 경로 | 타입·기본값 | 사용 방식 |
+| :--- | :--- | :--- |
+| `course.coverImageAttribution` | `PhotoAttribution | null`, 기본 null | 대표 이미지로 선택한 장소 사진과 같은 출처입니다. |
 | `course.itinerary.days[].stops[].place.photoAttribution` | `PhotoAttribution | null`, 기본 null | 해당 `photoUrl`의 원본 링크와 제공된 작성자 정보를 전달합니다. |
+
 
 ### PhotoAttribution
 
@@ -148,6 +143,7 @@ data: {
 ```
 
 사진을 확보하지 못하면 이미지 URL은 기존처럼 빈 문자열이고 출처는 null입니다. 요청 본문, 엔드포인트, progress·complete 이벤트 이름과 progress의 step 계약은 그대로입니다. 이전 완료 응답에서 이 필드가 생략된 경우도 기본 null로 읽습니다.
+
 
 ### BE·FE 연결 사항
 
