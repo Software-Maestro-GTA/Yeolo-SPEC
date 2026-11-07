@@ -53,6 +53,7 @@
 ### Error Codes
 400: 유효하지 않은 Google OAuth 요청/인가 코드
 401: Google OAuth 인증 실패
+426: 지원하지 않는 앱 버전
 500: 서버 오류
 
 ### 실패 응답
